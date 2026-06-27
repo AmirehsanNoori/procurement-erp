@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build --prefix web",
   "outputDirectory": "web/dist",
-  "installCommand": "npm install --prefix server && npm install --prefix web",
+  "installCommand": "npm install --prefix server && npm install --prefix web --include=dev",
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
