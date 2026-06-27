@@ -4,11 +4,11 @@
   "outputDirectory": "web/dist",
   "installCommand": "npm install --prefix server",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/server/api" },
+    { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "server/api.ts": {
+    "api/index.ts": {
       "memory": 1024,
       "maxDuration": 30
     }
