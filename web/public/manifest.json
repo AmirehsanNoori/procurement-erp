@@ -1,0 +1,39 @@
+{
+  "name": "سیستم ERP خرید و تدارکات",
+  "short_name": "ERP خرید",
+  "description": "سیستم یکپارچه مدیریت خرید، بودجه و مالی",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "lang": "fa",
+  "dir": "rtl",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "داشبورد",
+      "url": "/",
+      "description": "نمای کلی سیستم"
+    },
+    {
+      "name": "درخواست‌ها",
+      "url": "/requests",
+      "description": "لیست درخواست‌های خرید"
+    },
+    {
+      "name": "فاکتورها",
+      "url": "/invoices",
+      "description": "فاکتورهای فعال"
+    }
+  ]
+}

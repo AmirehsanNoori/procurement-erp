@@ -1,0 +1,776 @@
+{
+  "common": {
+    "save": "ذخیره",
+    "saving": "در حال ذخیره...",
+    "cancel": "انصراف",
+    "edit": "ویرایش",
+    "delete": "حذف",
+    "close": "بستن",
+    "add": "افزودن",
+    "search": "جستجو...",
+    "loading": "در حال بارگذاری...",
+    "noData": "داده‌ای یافت نشد",
+    "yes": "بله",
+    "no": "خیر",
+    "confirm": "تأیید",
+    "view": "مشاهده",
+    "print": "چاپ",
+    "export": "خروجی",
+    "import": "ورود",
+    "archive": "آرشیو",
+    "restore": "بازیابی",
+    "rial": "ریال",
+    "all": "همه",
+    "actions": "عملیات",
+    "status": "وضعیت",
+    "amount": "مبلغ",
+    "date": "تاریخ",
+    "notes": "یادداشت",
+    "supplier": "تأمین‌کننده",
+    "name": "نام",
+    "description": "توضیحات",
+    "type": "نوع",
+    "category": "دسته‌بندی",
+    "clearFilter": "✕ پاک",
+    "from": "از",
+    "to": "تا",
+    "download": "دانلود",
+    "upload": "آپلود",
+    "required": "الزامی",
+    "optional": "اختیاری",
+    "error": "خطا",
+    "success": "موفق",
+    "number": "شماره",
+    "addNew": "جدید",
+    "viewAll": "مشاهده همه",
+    "page": "صفحه",
+    "of": "از",
+    "next": "بعد",
+    "prev": "قبل",
+    "submitting": "...",
+    "result": "نتیجه",
+    "total": "جمع"
+  },
+  "nav": {
+    "groups": {
+      "main": "اصلی",
+      "procurement": "خرید",
+      "budget": "بودجه",
+      "finance": "مالی",
+      "tasks": "وظایف",
+      "reports": "گزارش",
+      "management": "مدیریت"
+    },
+    "dashboard": "داشبورد",
+    "controlCenter": "مرکز کنترل",
+    "notifications": "مرکز هشدارها",
+    "requests": "درخواست‌های فعال",
+    "requestArchive": "آرشیو درخواست‌ها",
+    "quotations": "پیش‌فاکتورهای فعال",
+    "quotationArchive": "آرشیو پیش‌فاکتورها",
+    "budgets": "بودجه ماهانه و پیش‌بینی",
+    "invoices": "فاکتورها",
+    "paidArchive": "آرشیو پرداخت شده",
+    "payments": "پرداخت‌ها",
+    "taskList": "وظایف و پیگیری",
+    "timeline": "تاریخچه فعالیت‌ها",
+    "suppliers": "تأمین‌کنندگان",
+    "supplierStatement": "صورت‌حساب تأمین‌کننده",
+    "documents": "مرکز اسناد",
+    "dueDates": "پایش سررسید",
+    "reports": "گزارش‌ها و KPI",
+    "executive": "داشبورد مدیریتی",
+    "analytics": "تحلیل و پیش‌بینی",
+    "importExport": "ورود / خروج داده",
+    "audit": "اعتبارسنجی ERP",
+    "users": "کاربران و دسترسی",
+    "tenants": "مدیریت سازمان‌ها",
+    "profile": "پروفایل کاربری"
+  },
+  "auth": {
+    "title": "ورود به سیستم",
+    "subtitle": "Procurement ERP",
+    "email": "ایمیل",
+    "password": "رمز عبور",
+    "loginBtn": "ورود",
+    "loggingIn": "در حال ورود...",
+    "error": "ایمیل یا رمز عبور اشتباه است"
+  },
+  "layout": {
+    "appTitle": "Procurement ERP",
+    "version": "Production v1.0",
+    "menu": "منو",
+    "searchHint": "جستجو (Ctrl+K)",
+    "notifications": "هشدارها",
+    "logout": "خروج"
+  },
+  "dashboard": {
+    "title": "داشبورد",
+    "kpi": {
+      "activeRequests": "درخواست‌های فعال",
+      "requestsSub": "درخواست ثبت‌شده",
+      "quotations": "پیش‌فاکتورها",
+      "quotationsSub": "پیش‌فاکتور فعال",
+      "openInvoices": "فاکتورهای باز",
+      "noBudget": "بدون بودجه",
+      "readyToPay": "آماده پرداخت",
+      "totalPayments": "مجموع پرداختی",
+      "cash": "نقدی",
+      "advance": "پیش‌پرداخت",
+      "suppliers": "تأمین‌کنندگان",
+      "documents": "اسناد بارگذاری‌شده",
+      "unreadNotif": "اعلان‌های خوانده‌نشده",
+      "viewAllNotif": "مشاهده همه اعلان‌ها"
+    },
+    "budget": {
+      "title": "وضعیت بودجه‌ها",
+      "viewAll": "مشاهده همه",
+      "consumed": "مصرف",
+      "approved": "تصویب",
+      "deficit": "⚠ کسری"
+    },
+    "overdue": {
+      "title": "فاکتورهای سررسید گذشته",
+      "viewAll": "مشاهده همه",
+      "empty": "هیچ فاکتور سررسید‌گذشته‌ای وجود ندارد",
+      "dueDate": "سررسید",
+      "remainingLabel": "ریال مانده",
+      "quickPayTip": "ثبت پرداخت سریع"
+    },
+    "invoiceStatus": {
+      "title": "وضعیت فاکتورها"
+    },
+    "quickPay": {
+      "title": "ثبت پرداخت سریع",
+      "invoice": "فاکتور",
+      "remaining": "مانده",
+      "amountLabel": "مبلغ *",
+      "payDateLabel": "تاریخ پرداخت",
+      "listNumberLabel": "شماره لیست",
+      "listPlaceholder": "مثلاً PAY-001",
+      "cancel": "انصراف",
+      "submit": "ثبت پرداخت"
+    }
+  },
+  "requests": {
+    "title": "درخواست‌های فعال",
+    "archiveTitle": "آرشیو درخواست‌ها",
+    "addNew": "+ درخواست جدید",
+    "searchPlaceholder": "جستجو در شماره، عنوان، دسته‌بندی...",
+    "filterAll": "همه وضعیت‌ها",
+    "empty": "درخواستی یافت نشد",
+    "cols": {
+      "number": "شماره درخواست",
+      "title": "عنوان",
+      "category": "دسته‌بندی",
+      "supplier": "تأمین‌کننده",
+      "status": "وضعیت",
+      "date": "تاریخ",
+      "actions": "عملیات"
+    },
+    "form": {
+      "newTitle": "درخواست جدید",
+      "editTitle": "ویرایش درخواست",
+      "requestNumber": "شماره درخواست *",
+      "orderNo": "شماره سفارش",
+      "title": "عنوان",
+      "category": "دسته‌بندی",
+      "supplier": "تأمین‌کننده",
+      "status": "وضعیت",
+      "requestDate": "تاریخ درخواست",
+      "documentDate": "تاریخ سند",
+      "receivedDate": "تاریخ دریافت",
+      "receivedPct": "درصد دریافت",
+      "followUpDate": "تاریخ پیگیری",
+      "deliveryDate": "تاریخ تحویل",
+      "serviceDate": "تاریخ خدمات",
+      "estimatedAmount": "مبلغ تخمینی",
+      "cost": "هزینه",
+      "description": "توضیحات",
+      "notes": "یادداشت",
+      "driver": "راننده",
+      "serviceProvider": "ارائه‌دهنده خدمات",
+      "ioidRow": "ردیف IOID",
+      "ioidRemark": "یادداشت IOID"
+    },
+    "linked": {
+      "title": "موجودیت‌های پیوندی",
+      "quotations": "پیش‌فاکتورها",
+      "invoices": "فاکتورها",
+      "documents": "اسناد پیوست",
+      "noQuotations": "پیش‌فاکتوری وجود ندارد",
+      "noInvoices": "فاکتوری وجود ندارد",
+      "noDocs": "سندی پیوست نشده"
+    },
+    "compare": {
+      "title": "مقایسه پیش‌فاکتورها",
+      "legend": "سبز = کمترین قیمت",
+      "attrs": {
+        "supplier": "تأمین‌کننده",
+        "amount": "مبلغ (ریال)",
+        "advance": "پیش‌پرداخت",
+        "status": "وضعیت",
+        "followUp": "تاریخ پیگیری",
+        "budget": "بودجه",
+        "batch": "شماره بچ",
+        "accountingRef": "مرجع حسابداری",
+        "notes": "یادداشت"
+      }
+    },
+    "actions": {
+      "edit": "✏ ویرایش",
+      "archive": "🗄 آرشیو",
+      "restore": "↩ بازیابی",
+      "links": "🔗 پیوندها",
+      "compareQuotes": "⚖ مقایسه قیمت",
+      "docs": "اسناد پیوست"
+    },
+    "confirm": {
+      "archive": "این درخواست آرشیو شود؟",
+      "restore": "این درخواست بازیابی شود؟"
+    }
+  },
+  "quotations": {
+    "title": "پیش‌فاکتورهای فعال",
+    "archiveTitle": "آرشیو پیش‌فاکتورها",
+    "addNew": "+ پیش‌فاکتور جدید",
+    "searchPlaceholder": "جستجو...",
+    "filterAll": "همه وضعیت‌ها",
+    "empty": "پیش‌فاکتوری یافت نشد",
+    "convertToInvoice": "تبدیل به فاکتور",
+    "confirmConvert": "این پیش‌فاکتور به فاکتور تبدیل شود؟",
+    "confirmArchive": "این پیش‌فاکتور آرشیو شود؟",
+    "cols": {
+      "number": "شماره پیش‌فاکتور",
+      "request": "درخواست",
+      "supplier": "تأمین‌کننده",
+      "amount": "مبلغ",
+      "advance": "پیش‌پرداخت",
+      "status": "وضعیت",
+      "followUp": "پیگیری",
+      "budget": "بودجه",
+      "actions": "عملیات"
+    },
+    "form": {
+      "newTitle": "پیش‌فاکتور جدید",
+      "editTitle": "ویرایش پیش‌فاکتور",
+      "requestId": "درخواست *",
+      "supplierId": "تأمین‌کننده",
+      "amount": "مبلغ *",
+      "advancePaymentAmount": "مبلغ پیش‌پرداخت",
+      "advancePaymentDate": "تاریخ پیش‌پرداخت",
+      "status": "وضعیت",
+      "followUpDate": "تاریخ پیگیری",
+      "notes": "یادداشت",
+      "batchNumber": "شماره بچ",
+      "accountingRef": "مرجع حسابداری"
+    }
+  },
+  "invoices": {
+    "title": "فاکتورها",
+    "paidTitle": "آرشیو فاکتورهای پرداخت‌شده",
+    "addNew": "+ فاکتور جدید",
+    "searchPlaceholder": "جستجو در شماره، تأمین‌کننده...",
+    "filterAll": "همه وضعیت‌ها",
+    "empty": "فاکتوری یافت نشد",
+    "exportCsv": "⬇ CSV",
+    "cols": {
+      "number": "شماره فاکتور",
+      "request": "درخواست",
+      "supplier": "تأمین‌کننده",
+      "budget": "بودجه",
+      "amount": "مبلغ کل",
+      "paid": "پرداخت‌شده",
+      "remaining": "مانده",
+      "status": "وضعیت",
+      "dueDate": "سررسید",
+      "actions": "عملیات"
+    },
+    "form": {
+      "newTitle": "فاکتور جدید",
+      "invoiceNumber": "شماره فاکتور *",
+      "requestId": "درخواست",
+      "supplierId": "تأمین‌کننده",
+      "budgetId": "بودجه",
+      "totalAmount": "مبلغ کل *",
+      "invoiceDate": "تاریخ فاکتور",
+      "dueDate": "تاریخ سررسید",
+      "notes": "یادداشت"
+    },
+    "detail": {
+      "title": "جزئیات فاکتور",
+      "totalAmount": "مبلغ کل",
+      "paid": "پرداخت‌شده",
+      "remaining": "مانده",
+      "status": "وضعیت",
+      "invoiceDate": "تاریخ فاکتور",
+      "dueDate": "سررسید",
+      "budget": "بودجه",
+      "batchNumber": "شماره بچ",
+      "accountingRef": "مرجع حسابداری",
+      "sentToAccounting": "ارسال به حسابداری",
+      "submissionDate": "تاریخ ارسال",
+      "accountingFollowUp": "پیگیری حسابداری",
+      "accountingNotes": "یادداشت حسابداری",
+      "notes": "یادداشت",
+      "installmentsTitle": "اقساط",
+      "paymentsTitle": "تاریخچه پرداخت‌ها",
+      "docsTitle": "اسناد پیوست",
+      "noInstallments": "قسطی تعریف نشده — برای افزودن ویرایش کنید",
+      "noPayments": "پرداختی ثبت نشده",
+      "noDocs": "سندی پیوست نشده",
+      "editAccounting": "✏ ویرایش حسابداری",
+      "printInvoice": "🖨 چاپ"
+    },
+    "installments": {
+      "editBtn": "✏ ویرایش",
+      "addRow": "＋ افزودن قسط",
+      "save": "ذخیره اقساط",
+      "cancel": "انصراف",
+      "month": "ماه",
+      "dueDate": "سررسید",
+      "amount": "مبلغ",
+      "status": "وضعیت"
+    },
+    "bulk": {
+      "selected": "فاکتور انتخاب شده",
+      "send": "✅ ارسال به حسابداری",
+      "recall": "↩ لغو ارسال"
+    },
+    "accounting": {
+      "title": "ویرایش اطلاعات حسابداری",
+      "batchNumber": "شماره بچ پرداخت",
+      "accountingRef": "مرجع حسابداری",
+      "accountingNotes": "یادداشت حسابداری",
+      "sentToAccounting": "ارسال به حسابداری",
+      "submissionDate": "تاریخ ارسال به حسابداری",
+      "followUpDate": "تاریخ پیگیری",
+      "dueDate": "تاریخ سررسید",
+      "notes": "یادداشت"
+    }
+  },
+  "payments": {
+    "title": "پرداخت‌ها",
+    "searchPlaceholder": "جستجو...",
+    "empty": "پرداختی ثبت نشده است",
+    "exportCsv": "⬇ CSV",
+    "clearFilter": "✕ پاک",
+    "cols": {
+      "date": "تاریخ",
+      "type": "نوع",
+      "doc": "سند",
+      "supplier": "تأمین‌کننده",
+      "listNumber": "شماره لیست",
+      "amount": "مبلغ",
+      "reference": "مرجع",
+      "notes": "یادداشت",
+      "actions": "عملیات"
+    },
+    "types": {
+      "advance": "پیش‌پرداخت",
+      "invoice": "فاکتور"
+    },
+    "totals": {
+      "invoiceTotal": "جمع پرداخت‌های فاکتور",
+      "advanceTotal": "جمع پیش‌پرداخت‌ها",
+      "grandTotal": "جمع کل پرداخت‌ها"
+    },
+    "batchLabel": "📋 لیست پرداخت",
+    "batchSum": "جمع",
+    "requestLabel": "درخواست",
+    "edit": {
+      "title": "ویرایش پرداخت",
+      "date": "تاریخ پرداخت",
+      "listNumber": "شماره لیست",
+      "notes": "یادداشت",
+      "save": "ذخیره",
+      "saving": "در حال ذخیره...",
+      "cancel": "انصراف"
+    },
+    "confirmDelete": "پرداخت حذف شود؟ وضعیت فاکتور بازمحاسبه می‌شود."
+  },
+  "suppliers": {
+    "title": "تأمین‌کنندگان",
+    "addNew": "+ تأمین‌کننده جدید",
+    "searchPlaceholder": "جستجو در نام، تلفن...",
+    "empty": "تأمین‌کننده‌ای یافت نشد",
+    "cols": {
+      "name": "نام",
+      "contactName": "مخاطب",
+      "phone": "تلفن",
+      "email": "ایمیل",
+      "actions": "عملیات"
+    },
+    "form": {
+      "newTitle": "تأمین‌کننده جدید",
+      "editTitle": "ویرایش تأمین‌کننده",
+      "name": "نام تأمین‌کننده *",
+      "contactName": "نام مخاطب",
+      "phone": "تلفن",
+      "email": "ایمیل",
+      "address": "آدرس",
+      "notes": "یادداشت"
+    },
+    "statement": {
+      "title": "صورت‌حساب",
+      "invoiceCount": "تعداد فاکتور",
+      "totalInvoiced": "جمع فاکتور شده",
+      "totalPaid": "جمع پرداخت‌شده",
+      "balance": "مانده",
+      "invoicesTitle": "فاکتورها"
+    },
+    "confirmDelete": "این تأمین‌کننده حذف شود؟"
+  },
+  "budgets": {
+    "title": "بودجه ماهانه",
+    "addNew": "+ بودجه جدید",
+    "empty": "بودجه‌ای تعریف نشده",
+    "remaining": "مانده",
+    "reserved": "رزرو شده",
+    "actual": "مصرف واقعی",
+    "approved": "تصویب‌شده",
+    "burnPct": "درصد مصرف",
+    "deficit": "⚠ کسری بودجه",
+    "viewInvoices": "📋 فاکتورها",
+    "form": {
+      "newTitle": "بودجه جدید",
+      "editTitle": "ویرایش بودجه",
+      "name": "نام بودجه",
+      "year": "سال",
+      "month": "ماه",
+      "amount": "مبلغ تصویب‌شده *",
+      "notes": "یادداشت"
+    },
+    "confirm": {
+      "delete": "این بودجه حذف شود؟"
+    }
+  },
+  "controlCenter": {
+    "title": "مرکز کنترل (IOID)",
+    "importBtn": "⬆ ورود Excel",
+    "exportBtn": "⬇ خروج Excel",
+    "importing": "در حال بارگذاری...",
+    "importCreated": "ایجاد",
+    "importUpdated": "بروزرسانی",
+    "importSkipped": "رد شده",
+    "empty": "داده‌ای در مرکز کنترل وجود ندارد",
+    "cols": {
+      "row": "ردیف",
+      "quoteNo": "شماره درخواست",
+      "orderNo": "شماره سفارش",
+      "title": "عنوان",
+      "category": "دسته‌بندی",
+      "docDate": "تاریخ سند",
+      "receivedDate": "تاریخ دریافت",
+      "weeklySegm": "هفته/ماه",
+      "rcvPct": "درصد دریافت",
+      "cost": "هزینه (ریال)",
+      "remark": "یادداشت",
+      "payStatus": "وضعیت پرداخت"
+    }
+  },
+  "documents": {
+    "title": "مرکز اسناد",
+    "uploadBtn": "⬆ آپلود سند",
+    "searchPlaceholder": "جستجو در نام فایل...",
+    "empty": "سندی یافت نشد",
+    "entityTypes": {
+      "all": "همه",
+      "request": "درخواست",
+      "quotation": "پیش‌فاکتور",
+      "invoice": "فاکتور",
+      "budget": "بودجه",
+      "supplier": "تأمین‌کننده",
+      "payment": "پرداخت"
+    },
+    "cols": {
+      "filename": "نام فایل",
+      "entity": "موجودیت",
+      "category": "دسته‌بندی",
+      "uploader": "بارگذارنده",
+      "size": "حجم",
+      "date": "تاریخ",
+      "actions": "عملیات"
+    },
+    "upload": {
+      "title": "آپلود سند",
+      "file": "فایل *",
+      "entityType": "نوع موجودیت *",
+      "entityId": "شناسه موجودیت *",
+      "category": "دسته‌بندی",
+      "submit": "آپلود",
+      "submitting": "در حال آپلود..."
+    },
+    "confirm": {
+      "delete": "این سند حذف شود؟"
+    }
+  },
+  "notifications": {
+    "title": "مرکز هشدارها",
+    "markAllRead": "علامت‌گذاری همه به عنوان خوانده‌شده",
+    "empty": "هیچ هشداری وجود ندارد",
+    "tabs": {
+      "all": "همه",
+      "unread": "خوانده‌نشده"
+    },
+    "confirm": {
+      "delete": "این هشدار حذف شود؟"
+    }
+  },
+  "users": {
+    "title": "کاربران و دسترسی",
+    "addNew": "+ کاربر جدید",
+    "searchPlaceholder": "جستجو در نام، ایمیل...",
+    "empty": "کاربری یافت نشد",
+    "superAdmin": "سوپر ادمین",
+    "cols": {
+      "name": "نام کامل",
+      "email": "ایمیل",
+      "tenants": "سازمان‌ها",
+      "superAdmin": "سطح دسترسی",
+      "actions": "عملیات"
+    },
+    "form": {
+      "newTitle": "کاربر جدید",
+      "editTitle": "ویرایش کاربر",
+      "fullName": "نام کامل *",
+      "email": "ایمیل *",
+      "password": "رمز عبور *",
+      "phone": "تلفن",
+      "isSuperAdmin": "سوپر ادمین",
+      "tenantId": "سازمان",
+      "roleId": "نقش"
+    },
+    "edit": {
+      "title": "ویرایش کاربر",
+      "fullName": "نام کامل",
+      "phone": "تلفن"
+    },
+    "resetPass": {
+      "title": "بازنشانی رمز عبور",
+      "newPass": "رمز عبور جدید *",
+      "confirmPass": "تأیید رمز عبور *"
+    },
+    "permissions": {
+      "title": "ویرایش دسترسی‌ها",
+      "tenant": "سازمان",
+      "grant": "✓ اجازه",
+      "revoke": "✕ محروم",
+      "default": "پیش‌فرض نقش",
+      "save": "ذخیره دسترسی‌ها"
+    },
+    "actions": {
+      "edit": "✏ ویرایش",
+      "permissions": "🔐 دسترسی",
+      "resetPass": "🔑 بازنشانی رمز",
+      "removeTenant": "حذف از سازمان",
+      "addTenant": "+ مستأجر"
+    },
+    "confirm": {
+      "removeTenant": "این کاربر از سازمان حذف شود؟"
+    }
+  },
+  "tenants": {
+    "title": "مدیریت سازمان‌ها",
+    "addNew": "+ سازمان جدید",
+    "empty": "سازمانی یافت نشد",
+    "form": {
+      "newTitle": "سازمان جدید",
+      "editTitle": "ویرایش سازمان",
+      "name": "نام سازمان *",
+      "code": "کد سازمان *",
+      "isActive": "فعال"
+    },
+    "cols": {
+      "name": "نام",
+      "code": "کد",
+      "status": "وضعیت",
+      "createdAt": "تاریخ ایجاد",
+      "actions": "عملیات"
+    },
+    "status": {
+      "active": "فعال",
+      "inactive": "غیرفعال"
+    }
+  },
+  "profile": {
+    "title": "پروفایل کاربری",
+    "editProfile": "ویرایش پروفایل",
+    "changePassword": "تغییر رمز عبور",
+    "form": {
+      "fullName": "نام کامل",
+      "email": "ایمیل",
+      "phone": "تلفن (اختیاری)",
+      "currentPass": "رمز عبور فعلی *",
+      "newPass": "رمز عبور جدید *",
+      "confirmPass": "تأیید رمز عبور *"
+    },
+    "accountInfo": {
+      "title": "اطلاعات حساب",
+      "lastLogin": "آخرین ورود",
+      "role": "نقش",
+      "tenant": "سازمان",
+      "email": "ایمیل",
+      "superAdmin": "سوپر ادمین"
+    }
+  },
+  "tasks": {
+    "title": "وظایف و پیگیری",
+    "addNew": "+ وظیفه جدید",
+    "empty": "وظیفه‌ای یافت نشد",
+    "filterAll": "همه وضعیت‌ها",
+    "cols": {
+      "title": "عنوان",
+      "priority": "اولویت",
+      "status": "وضعیت",
+      "dueDate": "مهلت",
+      "assignedTo": "مسئول",
+      "actions": "عملیات"
+    },
+    "form": {
+      "newTitle": "وظیفه جدید",
+      "editTitle": "ویرایش وظیفه",
+      "title": "عنوان *",
+      "priority": "اولویت",
+      "status": "وضعیت",
+      "dueDate": "مهلت",
+      "assignedTo": "مسئول",
+      "notes": "یادداشت",
+      "requestId": "شناسه درخواست (اختیاری)",
+      "invoiceId": "شناسه فاکتور (اختیاری)"
+    },
+    "priorities": {
+      "low": "پایین",
+      "medium": "متوسط",
+      "high": "بالا",
+      "critical": "بحرانی"
+    },
+    "statuses": {
+      "todo": "باید انجام شود",
+      "in_progress": "در حال انجام",
+      "done": "انجام شد",
+      "cancelled": "لغو شد"
+    },
+    "overdue": "⚠ سررسید گذشته",
+    "confirm": {
+      "delete": "این وظیفه حذف شود؟"
+    }
+  },
+  "timeline": {
+    "title": "تاریخچه فعالیت‌ها",
+    "addEvent": "+ رویداد جدید",
+    "empty": "فعالیتی ثبت نشده",
+    "filterAll": "همه",
+    "entityTypes": {
+      "request": "درخواست",
+      "quotation": "پیش‌فاکتور",
+      "invoice": "فاکتور",
+      "payment": "پرداخت"
+    },
+    "form": {
+      "title": "عنوان رویداد *",
+      "entityType": "نوع موجودیت",
+      "entityId": "شناسه موجودیت",
+      "description": "توضیحات"
+    }
+  },
+  "analytics": {
+    "title": "تحلیل و پیش‌بینی",
+    "forecast": {
+      "title": "پیش‌بینی بودجه",
+      "monthlyAvg": "میانگین پرداخت ماهانه (۳ ماه گذشته)",
+      "spent": "مصرف‌شده",
+      "remaining": "مانده",
+      "monthsLeft": "ماه تا اتمام بودجه",
+      "unlimited": "بی‌محدود"
+    },
+    "sections": {
+      "paymentTrend": "روند پرداخت ماهانه",
+      "invoiceTrend": "روند فاکتورها ماهانه",
+      "aging": "سنجش سن فاکتورها (روز)",
+      "categories": "بیشترین هزینه‌ها بر اساس دسته‌بندی",
+      "conversion": "نرخ تبدیل پیش‌فاکتور به فاکتور"
+    },
+    "aging": {
+      "d0_30": "۰–۳۰ روز",
+      "d31_60": "۳۱–۶۰ روز",
+      "d61_90": "۶۱–۹۰ روز",
+      "d90plus": "بیش از ۹۰ روز"
+    }
+  },
+  "executive": {
+    "title": "داشبورد مدیریتی",
+    "portfolio": "خلاصه پورتفولیو",
+    "budgetTable": "جدول بودجه‌ها",
+    "topSuppliers": "تأمین‌کنندگان برتر",
+    "overdueTitle": "خلاصه سررسیدهای گذشته"
+  },
+  "audit": {
+    "title": "اعتبارسنجی ERP",
+    "runBtn": "اجرای ممیزی",
+    "running": "در حال اجرا...",
+    "scoreLabel": "امتیاز سلامت سیستم",
+    "noIssues": "مشکلی یافت نشد",
+    "checks": "بررسی‌های انجام‌شده"
+  },
+  "reports": {
+    "title": "گزارش‌ها و KPI",
+    "budgetEfficiency": "کارایی بودجه",
+    "invoiceBreakdown": "تقسیم‌بندی فاکتورها",
+    "spendWaterfall": "آبشار هزینه‌ها"
+  },
+  "dueDates": {
+    "title": "پایش سررسید",
+    "overdue": "سررسید گذشته",
+    "today": "امروز سررسید",
+    "upcoming": "آینده",
+    "daysAgo": "روز پیش",
+    "daysLeft": "روز مانده",
+    "todayLabel": "امروز",
+    "types": {
+      "invoice": "فاکتور",
+      "quotation": "پیش‌فاکتور",
+      "request": "درخواست"
+    }
+  },
+  "importExport": {
+    "title": "ورود / خروج داده",
+    "export": {
+      "title": "خروجی داده‌ها",
+      "desc": "یک فایل JSON کامل از تمام داده‌های سازمان شما صادر کنید.",
+      "btn": "⬇ دانلود JSON",
+      "exporting": "در حال صدور..."
+    },
+    "import": {
+      "title": "وارد کردن داده‌ها",
+      "desc": "یک فایل JSON صادرشده از همین سیستم را بارگذاری کنید. رکوردهای تکراری (بر اساس شناسه منحصر به فرد) به‌روزرسانی می‌شوند.",
+      "warningTitle": "⚠ نکات مهم",
+      "w1": "فقط فایل‌های صادرشده از همین سیستم پذیرفته می‌شوند",
+      "w2": "داده‌های موجود بازنویسی نمی‌شوند، فقط به‌روزرسانی می‌شوند",
+      "w3": "عملیات قابل برگشت نیست — ابتدا پشتیبان بگیرید",
+      "file": "فایل JSON *",
+      "btn": "⬆ وارد کردن",
+      "importing": "در حال وارد کردن..."
+    },
+    "result": {
+      "created": "ایجاد شد",
+      "updated": "به‌روز شد",
+      "skipped": "رد شد"
+    }
+  },
+  "supplierStatement": {
+    "title": "صورت‌حساب تأمین‌کننده",
+    "selectPrompt": "یک تأمین‌کننده انتخاب کنید"
+  },
+  "search": {
+    "title": "جستجوی سراسری",
+    "placeholder": "جستجو در همه بخش‌ها...",
+    "empty": "نتیجه‌ای یافت نشد",
+    "categories": {
+      "suppliers": "تأمین‌کنندگان",
+      "requests": "درخواست‌ها",
+      "invoices": "فاکتورها",
+      "quotations": "پیش‌فاکتورها"
+    }
+  }
+}

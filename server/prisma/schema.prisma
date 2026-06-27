@@ -1,0 +1,728 @@
+// Procurement ERP — Production schema
+// Multi-tenant. Every operational table carries tenantId + created/updated audit columns.
+// Money is stored as Decimal(18,2). Dates are stored as DateTime (ISO/UTC); the UI renders Jalali.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ────────────────────────────────────────────────
+// Identity, tenancy, RBAC
+// ────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true)
+
+  // Subscription / plan
+  plan           String   @default("free")       // free | pro | enterprise
+  planExpiresAt  DateTime?
+  trialEndsAt    DateTime?
+  maxUsers       Int      @default(5)
+  contactEmail   String?
+  billingName    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantUsers TenantUser[]
+  overrides   UserPermissionOverride[]
+
+  requests      Request[]
+  quotations    Quotation[]
+  budgets       Budget[]
+  invoices      Invoice[]
+  installments  Installment[]
+  payments      Payment[]
+  suppliers     Supplier[]
+  documents     Document[]
+  tasks         Task[]
+  timeline      TimelineEvent[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  approvalWorkflows ApprovalWorkflow[]
+  approvalInstances ApprovalInstance[]
+  approvalVotes     ApprovalVote[]
+  correspondences       Correspondence[]
+  supplierContacts      SupplierContact[]
+  supplierInteractions  SupplierInteraction[]
+  blanketOrders         BlanketOrder[]
+  expenseReports        ExpenseReport[]
+  billingInvoices       BillingInvoice[]
+
+  @@map("tenants")
+}
+
+model BillingInvoice {
+  id          String   @id @default(cuid())
+  tenantId    String
+  invoiceNo   String?
+  plan        String
+  amount      Decimal  @default(0) @db.Decimal(18,2)
+  currency    String   @default("ریال")
+  status      String   @default("پرداخت شده")  // پرداخت شده | در انتظار | لغو شده
+  periodStart DateTime?
+  periodEnd   DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("billing_invoices")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  isActive     Boolean  @default(true)
+  isSuperAdmin Boolean  @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenantUsers   TenantUser[]
+  overrides     UserPermissionOverride[]
+  refreshTokens RefreshToken[]
+  approvalVotes ApprovalVote[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantUsers     TenantUser[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+// A user's membership in a tenant, with a role. Permissions = role defaults + per-user overrides.
+model TenantUser {
+  id       String  @id @default(cuid())
+  tenantId String
+  userId   String
+  roleId   String
+  isActive Boolean @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_users")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "requests.create"
+  module      String   // e.g. "requests"
+  action      String   // e.g. "create"
+  description String?
+
+  rolePermissions RolePermission[]
+  overrides       UserPermissionOverride[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Per-user, per-tenant explicit allow/deny that overrides the role default.
+model UserPermissionOverride {
+  id           String  @id @default(cuid())
+  tenantId     String
+  userId       String
+  permissionId String
+  allowed      Boolean
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, permissionId])
+  @@map("user_permission_overrides")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ────────────────────────────────────────────────
+// Core business tables
+// ────────────────────────────────────────────────
+
+model Supplier {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  bankAccount   String?
+  notes         String?
+  createdById   String?
+  updatedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requests   Request[]
+  quotations Quotation[]
+  invoices   Invoice[]
+  contacts      SupplierContact[]
+  interactions  SupplierInteraction[]
+  blanketOrders BlanketOrder[]
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+model SupplierContact {
+  id         String   @id @default(cuid())
+  tenantId   String
+  supplierId String
+  fullName   String
+  role       String?
+  phone      String?
+  email      String?
+  notes      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+  @@map("supplier_contacts")
+}
+
+model SupplierInteraction {
+  id           String   @id @default(cuid())
+  tenantId     String
+  supplierId   String
+  type         String   @default("یادداشت") // 'یادداشت' | 'تماس تلفنی' | 'جلسه' | 'ایمیل' | 'بازدید'
+  subject      String?
+  body         String?
+  interactionDate DateTime?
+  followUpDate DateTime?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+  @@map("supplier_interactions")
+}
+
+model BlanketOrder {
+  id            String    @id @default(cuid())
+  tenantId      String
+  supplierId    String
+  orderNumber   String?
+  description   String
+  totalValue    Decimal   @default(0) @db.Decimal(18, 2)
+  usedValue     Decimal   @default(0) @db.Decimal(18, 2)
+  currency      String    @default("ریال")
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String    @default("فعال") // 'فعال' | 'تکمیل شده' | 'لغو شده' | 'منقضی'
+  notes         String?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, supplierId])
+  @@map("blanket_orders")
+}
+
+model Request {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  requestNumber      String // QUOTE NO / PQ
+  orderNo            String?
+  title              String?
+  description        String?
+  category           String?
+  requestDate        DateTime?
+  documentDate       DateTime?
+  receivedDate       DateTime?
+  weeklySegmentation String?
+  receivedPercentage Decimal?  @db.Decimal(5, 2)
+  estimatedAmount    Decimal?  @db.Decimal(18, 2)
+  supplierId         String?
+  status             String    @default("جدید")
+  followUpDate       DateTime?
+  deliveryDate       DateTime?
+  serviceDate        DateTime?
+  driver             String?
+  serviceProvider    String?
+  notes              String?
+  ioidRow            Int?
+  ioidRemark         String?
+  cost               Decimal?  @db.Decimal(18, 2)
+  archived           Boolean   @default(false)
+  createdById        String?
+  updatedById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier   Supplier?   @relation(fields: [supplierId], references: [id])
+  quotations Quotation[]
+  invoices         Invoice[]
+  correspondences  Correspondence[]
+
+  @@unique([tenantId, requestNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("requests")
+}
+
+model Quotation {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  requestId           String?
+  quotationNumber     String?
+  supplierId          String?
+  date                DateTime?
+  amount              Decimal?  @db.Decimal(18, 2)
+  currency            String    @default("ریال")
+  status              String    @default("در انتظار سفارش")
+  budgetId            String?
+  followUpDate        DateTime?
+  deliveryDate        DateTime?
+  serviceDate         DateTime?
+  driver              String?
+  serviceProvider     String?
+  deliveryNotes       String?
+  advancePaymentAmount Decimal? @db.Decimal(18, 2)
+  advancePaymentDate  DateTime?
+  paymentBatchNumber  String?
+  accountingReference String?
+  notes               String?
+  archived            Boolean   @default(false)
+  createdById         String?
+  updatedById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  request  Request?  @relation(fields: [requestId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  budget   Budget?   @relation(fields: [budgetId], references: [id])
+  invoices Invoice[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("quotations")
+}
+
+model Budget {
+  id                String   @id @default(cuid())
+  tenantId          String
+  name              String?
+  yearJalali        Int
+  monthJalali       Int
+  estimatedCost     Decimal  @default(0) @db.Decimal(18, 2)
+  contingencyPercent Decimal @default(0) @db.Decimal(6, 2)
+  requiredBudget    Decimal  @default(0) @db.Decimal(18, 2)
+  approvedBudget    Decimal  @default(0) @db.Decimal(18, 2)
+  manualActual      Decimal? @db.Decimal(18, 2)
+  varianceReason    String?
+  notes             String?
+  createdById       String?
+  updatedById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  allocations BudgetAllocation[]
+  quotations  Quotation[]
+  invoices    Invoice[]
+
+  @@index([tenantId])
+  @@index([tenantId, yearJalali, monthJalali])
+  @@map("budgets")
+}
+
+model BudgetAllocation {
+  id          String  @id @default(cuid())
+  tenantId    String
+  budgetId    String
+  yearJalali  Int
+  monthJalali Int
+  percentage  Decimal @default(0) @db.Decimal(6, 2)
+  amount      Decimal @default(0) @db.Decimal(18, 2)
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+  @@map("budget_allocations")
+}
+
+model Invoice {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  invoiceNumber           String
+  requestId               String?
+  quotationId             String?
+  supplierId              String?
+  invoiceDate             DateTime?
+  dueDate                 DateTime?
+  netAmount               Decimal?  @db.Decimal(18, 2)
+  vatAmount               Decimal?  @db.Decimal(18, 2)
+  totalAmount             Decimal   @default(0) @db.Decimal(18, 2)
+  status                  String    @default("در انتظار بودجه")
+  budgetId                String?
+  batch                   String?
+  accountingReference     String?
+  accountingNotes         String?
+  sentToAccounting        Boolean   @default(false)
+  accountingSubmissionDate DateTime?
+  followUpDate            DateTime?
+  notes                   String?
+  archived                Boolean   @default(false)
+  createdById             String?
+  updatedById             String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  request      Request?      @relation(fields: [requestId], references: [id])
+  quotation    Quotation?    @relation(fields: [quotationId], references: [id])
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id])
+  budget       Budget?       @relation(fields: [budgetId], references: [id])
+  installments Installment[]
+  payments         Payment[]
+  correspondences  Correspondence[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("invoices")
+}
+
+model Installment {
+  id        String    @id @default(cuid())
+  tenantId  String
+  invoiceId String
+  amount    Decimal   @default(0) @db.Decimal(18, 2)
+  percent   Decimal?  @db.Decimal(6, 2)
+  monthKey  String? // "1403-09"
+  dueDate   DateTime?
+  status    String    @default("در انتظار")
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("installments")
+}
+
+model Payment {
+  id                String    @id @default(cuid())
+  tenantId          String
+  invoiceId         String
+  paymentDate       DateTime?
+  amount            Decimal   @default(0) @db.Decimal(18, 2)
+  paymentListNumber String?
+  reference         String?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model Document {
+  id               String   @id @default(cuid())
+  tenantId         String
+  entityType       String // request | quotation | invoice | budget | supplier | payment
+  entityId         String
+  category         String?
+  filename         String
+  originalFilename String?
+  mimeType         String?
+  size             Int?
+  storagePath      String
+  uploadedById     String?
+  createdAt        DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@map("documents")
+}
+
+model Task {
+  id              String    @id @default(cuid())
+  tenantId        String
+  title           String
+  description     String?
+  priority        Int       @default(2) // 1 low, 2 medium, 3 high
+  dueDate         DateTime?
+  followUpDate    DateTime?
+  status          String    @default("در انتظار")
+  relatedRequestId String?
+  relatedInvoiceId String?
+  assignedToId    String?
+  archived        Boolean   @default(false)
+  createdById     String?
+  updatedById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tasks")
+}
+
+model TimelineEvent {
+  id         String   @id @default(cuid())
+  tenantId   String
+  entityType String
+  entityId   String
+  eventType  String
+  eventDate  DateTime?
+  userId     String?
+  userName   String?
+  supplier   String?
+  reference  String?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@map("timeline_events")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  tenantId    String
+  type        String
+  level       String // critical | important | info
+  title       String
+  description String?
+  entityType  String?
+  entityId    String?
+  reference   String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("notifications")
+}
+
+// Audit log for sensitive actions (security section 28).
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────
+// Approval Workflow
+// ─────────────────────────────────────────
+
+model ApprovalWorkflow {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  entityType String   // 'invoice' | 'quotation' | 'request'
+  steps      Json     // [{label, requiredRole, order}]
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instances ApprovalInstance[]
+
+  @@index([tenantId])
+  @@map("approval_workflows")
+}
+
+model ApprovalInstance {
+  id            String   @id @default(cuid())
+  tenantId      String
+  workflowId    String
+  entityType    String
+  entityId      String
+  currentStep   Int      @default(0)
+  status        String   @default("در انتظار")
+  requestedById String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  votes    ApprovalVote[]
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@map("approval_instances")
+}
+
+model ApprovalVote {
+  id         String   @id @default(cuid())
+  tenantId   String
+  instanceId String
+  step       Int
+  userId     String
+  decision   String   // 'تأیید شده' | 'رد شده'
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instance ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id])
+
+  @@map("approval_votes")
+}
+
+model Correspondence {
+  id             String    @id @default(cuid())
+  tenantId       String
+  letterNumber   String?
+  direction      String    // 'صادره' | 'وارده'
+  subject        String
+  body           String?
+  senderName     String?
+  recipientName  String?
+  letterDate     DateTime?
+  receivedDate   DateTime?
+  priority       String    @default("عادی") // 'عادی' | 'فوری' | 'خیلی‌فوری'
+  status         String    @default("ثبت شده") // 'ثبت شده' | 'در جریان' | 'بایگانی' | 'پاسخ داده شده'
+  relatedRequestId String?
+  relatedInvoiceId String?
+  attachmentPath String?
+  notes          String?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  request Request? @relation(fields: [relatedRequestId], references: [id])
+  invoice Invoice? @relation(fields: [relatedInvoiceId], references: [id])
+
+  @@index([tenantId])
+  @@map("correspondences")
+}
+
+model ExpenseReport {
+  id           String    @id @default(cuid())
+  tenantId     String
+  reportNumber String?
+  title        String
+  submittedBy  String?
+  department   String?
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  totalAmount  Decimal   @default(0) @db.Decimal(18, 2)
+  currency     String    @default("ریال")
+  status       String    @default("پیش‌نویس") // 'پیش‌نویس' | 'ارسال شده' | 'تأیید شده' | 'رد شده' | 'پرداخت شده'
+  notes        String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  ExpenseItem[]
+
+  @@index([tenantId])
+  @@map("expense_reports")
+}
+
+model ExpenseItem {
+  id          String   @id @default(cuid())
+  reportId    String
+  category    String   // 'حمل‌ونقل' | 'پذیرایی' | 'اقامت' | 'ارتباطات' | 'اداری' | 'سایر'
+  description String
+  amount      Decimal  @db.Decimal(18, 2)
+  expenseDate DateTime?
+  receiptRef  String?
+  createdAt   DateTime @default(now())
+
+  report ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("expense_items")
+}

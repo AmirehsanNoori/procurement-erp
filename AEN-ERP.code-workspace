@@ -1,0 +1,26 @@
+{
+  "folders": [
+    {
+      "name": "server",
+      "path": "server"
+    },
+    {
+      "name": "web",
+      "path": "web"
+    }
+  ],
+  "settings": {
+    "typescript.tsdk": "server/node_modules/typescript/lib",
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.prisma": true,
+      "**/prisma/migrations": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/dist/**": true
+    },
+    "editor.formatOnSave": false
+  }
+}

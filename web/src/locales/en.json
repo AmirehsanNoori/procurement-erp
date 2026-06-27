@@ -1,0 +1,776 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "add": "Add",
+    "search": "Search...",
+    "loading": "Loading...",
+    "noData": "No data found",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "view": "View",
+    "print": "Print",
+    "export": "Export",
+    "import": "Import",
+    "archive": "Archive",
+    "restore": "Restore",
+    "rial": "IRR",
+    "all": "All",
+    "actions": "Actions",
+    "status": "Status",
+    "amount": "Amount",
+    "date": "Date",
+    "notes": "Notes",
+    "supplier": "Supplier",
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "category": "Category",
+    "clearFilter": "✕ Clear",
+    "from": "From",
+    "to": "To",
+    "download": "Download",
+    "upload": "Upload",
+    "required": "Required",
+    "optional": "Optional",
+    "error": "Error",
+    "success": "Success",
+    "number": "Number",
+    "addNew": "New",
+    "viewAll": "View All",
+    "page": "Page",
+    "of": "of",
+    "next": "Next",
+    "prev": "Previous",
+    "submitting": "...",
+    "result": "Result",
+    "total": "Total"
+  },
+  "nav": {
+    "groups": {
+      "main": "Main",
+      "procurement": "Procurement",
+      "budget": "Budget",
+      "finance": "Finance",
+      "tasks": "Tasks",
+      "reports": "Reports",
+      "management": "Management"
+    },
+    "dashboard": "Dashboard",
+    "controlCenter": "Control Center",
+    "notifications": "Notification Center",
+    "requests": "Active Requests",
+    "requestArchive": "Request Archive",
+    "quotations": "Active Quotations",
+    "quotationArchive": "Quotation Archive",
+    "budgets": "Monthly Budget & Forecast",
+    "invoices": "Invoices",
+    "paidArchive": "Paid Invoice Archive",
+    "payments": "Payments",
+    "taskList": "Tasks & Follow-Up",
+    "timeline": "Activity Timeline",
+    "suppliers": "Suppliers",
+    "supplierStatement": "Supplier Statement",
+    "documents": "Document Center",
+    "dueDates": "Due Date Monitor",
+    "reports": "Reports & KPI",
+    "executive": "Executive Dashboard",
+    "analytics": "Analytics & Forecast",
+    "importExport": "Import / Export",
+    "audit": "ERP Audit",
+    "users": "Users & Access",
+    "tenants": "Organization Management",
+    "profile": "User Profile"
+  },
+  "auth": {
+    "title": "Sign In",
+    "subtitle": "Procurement ERP",
+    "email": "Email",
+    "password": "Password",
+    "loginBtn": "Sign In",
+    "loggingIn": "Signing in...",
+    "error": "Invalid email or password"
+  },
+  "layout": {
+    "appTitle": "Procurement ERP",
+    "version": "Production v1.0",
+    "menu": "Menu",
+    "searchHint": "Search (Ctrl+K)",
+    "notifications": "Notifications",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "kpi": {
+      "activeRequests": "Active Requests",
+      "requestsSub": "Requests registered",
+      "quotations": "Quotations",
+      "quotationsSub": "Active quotations",
+      "openInvoices": "Open Invoices",
+      "noBudget": "No budget",
+      "readyToPay": "Ready to pay",
+      "totalPayments": "Total Payments",
+      "cash": "Cash",
+      "advance": "Advance",
+      "suppliers": "Suppliers",
+      "documents": "Uploaded Documents",
+      "unreadNotif": "Unread Notifications",
+      "viewAllNotif": "View all notifications"
+    },
+    "budget": {
+      "title": "Budget Status",
+      "viewAll": "View All",
+      "consumed": "Consumed",
+      "approved": "Approved",
+      "deficit": "⚠ Deficit"
+    },
+    "overdue": {
+      "title": "Overdue Invoices",
+      "viewAll": "View All",
+      "empty": "No overdue invoices",
+      "dueDate": "Due",
+      "remainingLabel": "IRR remaining",
+      "quickPayTip": "Quick Payment"
+    },
+    "invoiceStatus": {
+      "title": "Invoice Status Breakdown"
+    },
+    "quickPay": {
+      "title": "Quick Payment",
+      "invoice": "Invoice",
+      "remaining": "Remaining",
+      "amountLabel": "Amount *",
+      "payDateLabel": "Payment Date",
+      "listNumberLabel": "List Number",
+      "listPlaceholder": "e.g. PAY-001",
+      "cancel": "Cancel",
+      "submit": "Register Payment"
+    }
+  },
+  "requests": {
+    "title": "Active Requests",
+    "archiveTitle": "Request Archive",
+    "addNew": "+ New Request",
+    "searchPlaceholder": "Search by number, title, category...",
+    "filterAll": "All statuses",
+    "empty": "No requests found",
+    "cols": {
+      "number": "Request Number",
+      "title": "Title",
+      "category": "Category",
+      "supplier": "Supplier",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "form": {
+      "newTitle": "New Request",
+      "editTitle": "Edit Request",
+      "requestNumber": "Request Number *",
+      "orderNo": "Order Number",
+      "title": "Title",
+      "category": "Category",
+      "supplier": "Supplier",
+      "status": "Status",
+      "requestDate": "Request Date",
+      "documentDate": "Document Date",
+      "receivedDate": "Received Date",
+      "receivedPct": "Received %",
+      "followUpDate": "Follow-up Date",
+      "deliveryDate": "Delivery Date",
+      "serviceDate": "Service Date",
+      "estimatedAmount": "Estimated Amount",
+      "cost": "Cost",
+      "description": "Description",
+      "notes": "Notes",
+      "driver": "Driver",
+      "serviceProvider": "Service Provider",
+      "ioidRow": "IOID Row",
+      "ioidRemark": "IOID Remark"
+    },
+    "linked": {
+      "title": "Linked Entities",
+      "quotations": "Quotations",
+      "invoices": "Invoices",
+      "documents": "Attached Documents",
+      "noQuotations": "No quotations found",
+      "noInvoices": "No invoices found",
+      "noDocs": "No documents attached"
+    },
+    "compare": {
+      "title": "Compare Quotations",
+      "legend": "Green = Lowest price",
+      "attrs": {
+        "supplier": "Supplier",
+        "amount": "Amount (IRR)",
+        "advance": "Advance Payment",
+        "status": "Status",
+        "followUp": "Follow-up Date",
+        "budget": "Budget",
+        "batch": "Batch Number",
+        "accountingRef": "Accounting Reference",
+        "notes": "Notes"
+      }
+    },
+    "actions": {
+      "edit": "✏ Edit",
+      "archive": "🗄 Archive",
+      "restore": "↩ Restore",
+      "links": "🔗 Links",
+      "compareQuotes": "⚖ Compare Quotes",
+      "docs": "Attached Documents"
+    },
+    "confirm": {
+      "archive": "Archive this request?",
+      "restore": "Restore this request?"
+    }
+  },
+  "quotations": {
+    "title": "Active Quotations",
+    "archiveTitle": "Quotation Archive",
+    "addNew": "+ New Quotation",
+    "searchPlaceholder": "Search...",
+    "filterAll": "All statuses",
+    "empty": "No quotations found",
+    "convertToInvoice": "Convert to Invoice",
+    "confirmConvert": "Convert this quotation to an invoice?",
+    "confirmArchive": "Archive this quotation?",
+    "cols": {
+      "number": "Quotation Number",
+      "request": "Request",
+      "supplier": "Supplier",
+      "amount": "Amount",
+      "advance": "Advance",
+      "status": "Status",
+      "followUp": "Follow-up",
+      "budget": "Budget",
+      "actions": "Actions"
+    },
+    "form": {
+      "newTitle": "New Quotation",
+      "editTitle": "Edit Quotation",
+      "requestId": "Request *",
+      "supplierId": "Supplier",
+      "amount": "Amount *",
+      "advancePaymentAmount": "Advance Amount",
+      "advancePaymentDate": "Advance Date",
+      "status": "Status",
+      "followUpDate": "Follow-up Date",
+      "notes": "Notes",
+      "batchNumber": "Batch Number",
+      "accountingRef": "Accounting Reference"
+    }
+  },
+  "invoices": {
+    "title": "Invoices",
+    "paidTitle": "Paid Invoice Archive",
+    "addNew": "+ New Invoice",
+    "searchPlaceholder": "Search by number, supplier...",
+    "filterAll": "All statuses",
+    "empty": "No invoices found",
+    "exportCsv": "⬇ CSV",
+    "cols": {
+      "number": "Invoice Number",
+      "request": "Request",
+      "supplier": "Supplier",
+      "budget": "Budget",
+      "amount": "Total Amount",
+      "paid": "Paid",
+      "remaining": "Remaining",
+      "status": "Status",
+      "dueDate": "Due Date",
+      "actions": "Actions"
+    },
+    "form": {
+      "newTitle": "New Invoice",
+      "invoiceNumber": "Invoice Number *",
+      "requestId": "Request",
+      "supplierId": "Supplier",
+      "budgetId": "Budget",
+      "totalAmount": "Total Amount *",
+      "invoiceDate": "Invoice Date",
+      "dueDate": "Due Date",
+      "notes": "Notes"
+    },
+    "detail": {
+      "title": "Invoice Details",
+      "totalAmount": "Total Amount",
+      "paid": "Paid",
+      "remaining": "Remaining",
+      "status": "Status",
+      "invoiceDate": "Invoice Date",
+      "dueDate": "Due Date",
+      "budget": "Budget",
+      "batchNumber": "Batch Number",
+      "accountingRef": "Accounting Reference",
+      "sentToAccounting": "Sent to Accounting",
+      "submissionDate": "Submission Date",
+      "accountingFollowUp": "Accounting Follow-up",
+      "accountingNotes": "Accounting Notes",
+      "notes": "Notes",
+      "installmentsTitle": "Installments",
+      "paymentsTitle": "Payment History",
+      "docsTitle": "Attached Documents",
+      "noInstallments": "No installments defined — click Edit to add",
+      "noPayments": "No payments recorded",
+      "noDocs": "No documents attached",
+      "editAccounting": "✏ Edit Accounting",
+      "printInvoice": "🖨 Print"
+    },
+    "installments": {
+      "editBtn": "✏ Edit",
+      "addRow": "＋ Add Installment",
+      "save": "Save Installments",
+      "cancel": "Cancel",
+      "month": "Month",
+      "dueDate": "Due Date",
+      "amount": "Amount",
+      "status": "Status"
+    },
+    "bulk": {
+      "selected": "invoices selected",
+      "send": "✅ Send to Accounting",
+      "recall": "↩ Recall"
+    },
+    "accounting": {
+      "title": "Edit Accounting Details",
+      "batchNumber": "Payment Batch Number",
+      "accountingRef": "Accounting Reference",
+      "accountingNotes": "Accounting Notes",
+      "sentToAccounting": "Sent to Accounting",
+      "submissionDate": "Submission Date",
+      "followUpDate": "Follow-up Date",
+      "dueDate": "Due Date",
+      "notes": "Notes"
+    }
+  },
+  "payments": {
+    "title": "Payments",
+    "searchPlaceholder": "Search...",
+    "empty": "No payments recorded",
+    "exportCsv": "⬇ CSV",
+    "clearFilter": "✕ Clear",
+    "cols": {
+      "date": "Date",
+      "type": "Type",
+      "doc": "Document",
+      "supplier": "Supplier",
+      "listNumber": "List Number",
+      "amount": "Amount",
+      "reference": "Reference",
+      "notes": "Notes",
+      "actions": "Actions"
+    },
+    "types": {
+      "advance": "Advance",
+      "invoice": "Invoice"
+    },
+    "totals": {
+      "invoiceTotal": "Total Invoice Payments",
+      "advanceTotal": "Total Advance Payments",
+      "grandTotal": "Grand Total"
+    },
+    "batchLabel": "📋 Payment List",
+    "batchSum": "Total",
+    "requestLabel": "Request",
+    "edit": {
+      "title": "Edit Payment",
+      "date": "Payment Date",
+      "listNumber": "List Number",
+      "notes": "Notes",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel"
+    },
+    "confirmDelete": "Delete this payment? Invoice status will be recalculated."
+  },
+  "suppliers": {
+    "title": "Suppliers",
+    "addNew": "+ New Supplier",
+    "searchPlaceholder": "Search by name, phone...",
+    "empty": "No suppliers found",
+    "cols": {
+      "name": "Name",
+      "contactName": "Contact",
+      "phone": "Phone",
+      "email": "Email",
+      "actions": "Actions"
+    },
+    "form": {
+      "newTitle": "New Supplier",
+      "editTitle": "Edit Supplier",
+      "name": "Supplier Name *",
+      "contactName": "Contact Name",
+      "phone": "Phone",
+      "email": "Email",
+      "address": "Address",
+      "notes": "Notes"
+    },
+    "statement": {
+      "title": "Statement",
+      "invoiceCount": "Invoice Count",
+      "totalInvoiced": "Total Invoiced",
+      "totalPaid": "Total Paid",
+      "balance": "Balance",
+      "invoicesTitle": "Invoices"
+    },
+    "confirmDelete": "Delete this supplier?"
+  },
+  "budgets": {
+    "title": "Monthly Budget",
+    "addNew": "+ New Budget",
+    "empty": "No budgets defined",
+    "remaining": "Remaining",
+    "reserved": "Reserved",
+    "actual": "Actual",
+    "approved": "Approved",
+    "burnPct": "Burn %",
+    "deficit": "⚠ Budget Deficit",
+    "viewInvoices": "📋 Invoices",
+    "form": {
+      "newTitle": "New Budget",
+      "editTitle": "Edit Budget",
+      "name": "Budget Name",
+      "year": "Year",
+      "month": "Month",
+      "amount": "Approved Amount *",
+      "notes": "Notes"
+    },
+    "confirm": {
+      "delete": "Delete this budget?"
+    }
+  },
+  "controlCenter": {
+    "title": "Control Center (IOID)",
+    "importBtn": "⬆ Import Excel",
+    "exportBtn": "⬇ Export Excel",
+    "importing": "Loading...",
+    "importCreated": "Created",
+    "importUpdated": "Updated",
+    "importSkipped": "Skipped",
+    "empty": "No data in control center",
+    "cols": {
+      "row": "Row",
+      "quoteNo": "Quote No.",
+      "orderNo": "Order No.",
+      "title": "Title",
+      "category": "Category",
+      "docDate": "Doc. Date",
+      "receivedDate": "Received Date",
+      "weeklySegm": "Week/Month",
+      "rcvPct": "Rcv %",
+      "cost": "Cost (IRR)",
+      "remark": "Remark",
+      "payStatus": "Payment Status"
+    }
+  },
+  "documents": {
+    "title": "Document Center",
+    "uploadBtn": "⬆ Upload Document",
+    "searchPlaceholder": "Search by filename...",
+    "empty": "No documents found",
+    "entityTypes": {
+      "all": "All",
+      "request": "Request",
+      "quotation": "Quotation",
+      "invoice": "Invoice",
+      "budget": "Budget",
+      "supplier": "Supplier",
+      "payment": "Payment"
+    },
+    "cols": {
+      "filename": "Filename",
+      "entity": "Entity",
+      "category": "Category",
+      "uploader": "Uploaded by",
+      "size": "Size",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "upload": {
+      "title": "Upload Document",
+      "file": "File *",
+      "entityType": "Entity Type *",
+      "entityId": "Entity ID *",
+      "category": "Category",
+      "submit": "Upload",
+      "submitting": "Uploading..."
+    },
+    "confirm": {
+      "delete": "Delete this document?"
+    }
+  },
+  "notifications": {
+    "title": "Notification Center",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications",
+    "tabs": {
+      "all": "All",
+      "unread": "Unread"
+    },
+    "confirm": {
+      "delete": "Delete this notification?"
+    }
+  },
+  "users": {
+    "title": "Users & Access",
+    "addNew": "+ New User",
+    "searchPlaceholder": "Search by name, email...",
+    "empty": "No users found",
+    "superAdmin": "Super Admin",
+    "cols": {
+      "name": "Full Name",
+      "email": "Email",
+      "tenants": "Organizations",
+      "superAdmin": "Access Level",
+      "actions": "Actions"
+    },
+    "form": {
+      "newTitle": "New User",
+      "editTitle": "Edit User",
+      "fullName": "Full Name *",
+      "email": "Email *",
+      "password": "Password *",
+      "phone": "Phone",
+      "isSuperAdmin": "Super Admin",
+      "tenantId": "Organization",
+      "roleId": "Role"
+    },
+    "edit": {
+      "title": "Edit User",
+      "fullName": "Full Name",
+      "phone": "Phone"
+    },
+    "resetPass": {
+      "title": "Reset Password",
+      "newPass": "New Password *",
+      "confirmPass": "Confirm Password *"
+    },
+    "permissions": {
+      "title": "Edit Permissions",
+      "tenant": "Organization",
+      "grant": "✓ Grant",
+      "revoke": "✕ Revoke",
+      "default": "Role default",
+      "save": "Save Permissions"
+    },
+    "actions": {
+      "edit": "✏ Edit",
+      "permissions": "🔐 Permissions",
+      "resetPass": "🔑 Reset Password",
+      "removeTenant": "Remove from Org",
+      "addTenant": "+ Add Org"
+    },
+    "confirm": {
+      "removeTenant": "Remove this user from the organization?"
+    }
+  },
+  "tenants": {
+    "title": "Organization Management",
+    "addNew": "+ New Organization",
+    "empty": "No organizations found",
+    "form": {
+      "newTitle": "New Organization",
+      "editTitle": "Edit Organization",
+      "name": "Organization Name *",
+      "code": "Organization Code *",
+      "isActive": "Active"
+    },
+    "cols": {
+      "name": "Name",
+      "code": "Code",
+      "status": "Status",
+      "createdAt": "Created At",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "profile": {
+    "title": "User Profile",
+    "editProfile": "Edit Profile",
+    "changePassword": "Change Password",
+    "form": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "phone": "Phone (Optional)",
+      "currentPass": "Current Password *",
+      "newPass": "New Password *",
+      "confirmPass": "Confirm Password *"
+    },
+    "accountInfo": {
+      "title": "Account Information",
+      "lastLogin": "Last Login",
+      "role": "Role",
+      "tenant": "Organization",
+      "email": "Email",
+      "superAdmin": "Super Admin"
+    }
+  },
+  "tasks": {
+    "title": "Tasks & Follow-Up",
+    "addNew": "+ New Task",
+    "empty": "No tasks found",
+    "filterAll": "All statuses",
+    "cols": {
+      "title": "Title",
+      "priority": "Priority",
+      "status": "Status",
+      "dueDate": "Due Date",
+      "assignedTo": "Assigned To",
+      "actions": "Actions"
+    },
+    "form": {
+      "newTitle": "New Task",
+      "editTitle": "Edit Task",
+      "title": "Title *",
+      "priority": "Priority",
+      "status": "Status",
+      "dueDate": "Due Date",
+      "assignedTo": "Assigned To",
+      "notes": "Notes",
+      "requestId": "Request ID (Optional)",
+      "invoiceId": "Invoice ID (Optional)"
+    },
+    "priorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "statuses": {
+      "todo": "To Do",
+      "in_progress": "In Progress",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "overdue": "⚠ Overdue",
+    "confirm": {
+      "delete": "Delete this task?"
+    }
+  },
+  "timeline": {
+    "title": "Activity Timeline",
+    "addEvent": "+ New Event",
+    "empty": "No activities recorded",
+    "filterAll": "All",
+    "entityTypes": {
+      "request": "Request",
+      "quotation": "Quotation",
+      "invoice": "Invoice",
+      "payment": "Payment"
+    },
+    "form": {
+      "title": "Event Title *",
+      "entityType": "Entity Type",
+      "entityId": "Entity ID",
+      "description": "Description"
+    }
+  },
+  "analytics": {
+    "title": "Analytics & Forecast",
+    "forecast": {
+      "title": "Budget Forecast",
+      "monthlyAvg": "Monthly Payment Average (Last 3 Months)",
+      "spent": "Spent",
+      "remaining": "Remaining",
+      "monthsLeft": "Months until budget exhausted",
+      "unlimited": "Unlimited"
+    },
+    "sections": {
+      "paymentTrend": "Monthly Payment Trend",
+      "invoiceTrend": "Monthly Invoice Trend",
+      "aging": "Invoice Aging (Days)",
+      "categories": "Top Spend Categories",
+      "conversion": "Quotation to Invoice Conversion Rate"
+    },
+    "aging": {
+      "d0_30": "0–30 days",
+      "d31_60": "31–60 days",
+      "d61_90": "61–90 days",
+      "d90plus": "90+ days"
+    }
+  },
+  "executive": {
+    "title": "Executive Dashboard",
+    "portfolio": "Portfolio Summary",
+    "budgetTable": "Budget Table",
+    "topSuppliers": "Top Suppliers",
+    "overdueTitle": "Overdue Summary"
+  },
+  "audit": {
+    "title": "ERP Audit",
+    "runBtn": "Run Audit",
+    "running": "Running...",
+    "scoreLabel": "System Health Score",
+    "noIssues": "No issues found",
+    "checks": "Checks performed"
+  },
+  "reports": {
+    "title": "Reports & KPI",
+    "budgetEfficiency": "Budget Efficiency",
+    "invoiceBreakdown": "Invoice Breakdown",
+    "spendWaterfall": "Spend Waterfall"
+  },
+  "dueDates": {
+    "title": "Due Date Monitor",
+    "overdue": "Overdue",
+    "today": "Due Today",
+    "upcoming": "Upcoming",
+    "daysAgo": "days ago",
+    "daysLeft": "days left",
+    "todayLabel": "Today",
+    "types": {
+      "invoice": "Invoice",
+      "quotation": "Quotation",
+      "request": "Request"
+    }
+  },
+  "importExport": {
+    "title": "Import / Export Data",
+    "export": {
+      "title": "Export Data",
+      "desc": "Export a complete JSON backup of all your organization's data.",
+      "btn": "⬇ Download JSON",
+      "exporting": "Exporting..."
+    },
+    "import": {
+      "title": "Import Data",
+      "desc": "Upload a JSON file exported from this system. Duplicate records (by unique identifier) will be updated.",
+      "warningTitle": "⚠ Important Notes",
+      "w1": "Only files exported from this system are accepted",
+      "w2": "Existing data will not be overwritten, only updated",
+      "w3": "This operation cannot be undone — backup first",
+      "file": "JSON File *",
+      "btn": "⬆ Import",
+      "importing": "Importing..."
+    },
+    "result": {
+      "created": "Created",
+      "updated": "Updated",
+      "skipped": "Skipped"
+    }
+  },
+  "supplierStatement": {
+    "title": "Supplier Statement",
+    "selectPrompt": "Select a supplier"
+  },
+  "search": {
+    "title": "Global Search",
+    "placeholder": "Search across all modules...",
+    "empty": "No results found",
+    "categories": {
+      "suppliers": "Suppliers",
+      "requests": "Requests",
+      "invoices": "Invoices",
+      "quotations": "Quotations"
+    }
+  }
+}
