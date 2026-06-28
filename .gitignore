@@ -39,3 +39,7 @@ coverage/
 
 # Service Worker cache
 web/public/sw-*.js
+
+.vercel
+.env*
+.github/workflows/
