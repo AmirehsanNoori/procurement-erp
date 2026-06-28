@@ -26,10 +26,12 @@ import billingRoutes from '../modules/billing/billing.routes';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireTenant } from '../middleware/requireTenant';
 import seedRoutes from '../modules/admin/seed.routes';
+import migrateRoutes from '../modules/admin/migrate.routes';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+router.use('/admin/migrate', migrateRoutes);
 router.use('/admin/seed', seedRoutes);
 
 // Account-level routes
