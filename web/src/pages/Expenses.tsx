@@ -4,6 +4,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface ExpenseItem {
   id: string;
@@ -299,7 +300,7 @@ export function Expenses() {
                 </select>
                 <input className="input" placeholder="شرح *" value={itemForm.description} onChange={(e) => setItemForm((p) => ({ ...p, description: e.target.value }))} />
                 <input type="number" className="input" placeholder="مبلغ" value={itemForm.amount} onChange={(e) => setItemForm((p) => ({ ...p, amount: Number(e.target.value) }))} />
-                <input type="date" className="input" value={itemForm.expenseDate} onChange={(e) => setItemForm((p) => ({ ...p, expenseDate: e.target.value }))} />
+                <JDatePicker className="input" value={itemForm.expenseDate} onChange={(v) => setItemForm((p) => ({ ...p, expenseDate: v }))} />
                 <input className="input" placeholder="شماره رسید" value={itemForm.receiptRef} onChange={(e) => setItemForm((p) => ({ ...p, receiptRef: e.target.value }))} />
                 <button
                   className="btn btn-primary text-xs px-3 py-1.5"
@@ -370,11 +371,11 @@ export function Expenses() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">شروع دوره</label>
-                  <input type="date" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={form.periodStart} onChange={(e) => setForm((p) => ({ ...p, periodStart: e.target.value }))} />
+                  <JDatePicker className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={form.periodStart} onChange={(v) => setForm((p) => ({ ...p, periodStart: v }))} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">پایان دوره</label>
-                  <input type="date" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={form.periodEnd} onChange={(e) => setForm((p) => ({ ...p, periodEnd: e.target.value }))} />
+                  <JDatePicker className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={form.periodEnd} onChange={(v) => setForm((p) => ({ ...p, periodEnd: v }))} />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">یادداشت</label>

@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface PayRow {
   id: string; type: 'invoice' | 'advance'; date: string | null; amount: number;
@@ -104,11 +105,11 @@ export function Payments() {
         <input className="input max-w-xs" placeholder={t('payments.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
         <label className="flex items-center gap-1 text-xs text-slate-600">
           {t('common.from')}:
-          <input className="input w-36 py-1.5 text-xs" type="date" dir="ltr" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <JDatePicker className="input w-36 py-1.5 text-xs" value={from} onChange={(v) => setFrom(v)} />
         </label>
         <label className="flex items-center gap-1 text-xs text-slate-600">
           {t('common.to')}:
-          <input className="input w-36 py-1.5 text-xs" type="date" dir="ltr" value={to} onChange={(e) => setTo(e.target.value)} />
+          <JDatePicker className="input w-36 py-1.5 text-xs" value={to} onChange={(v) => setTo(v)} />
         </label>
         {(from || to) && (
           <button className="btn btn-outline px-2 py-1 text-xs" onClick={() => { setFrom(''); setTo(''); }}>{t('payments.clearFilter')}</button>
@@ -215,10 +216,10 @@ export function Payments() {
             <div className="space-y-3">
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('payments.edit.date')}</span>
-                <input
-                  className="input" type="date" dir="ltr"
+                <JDatePicker
+                  className="input"
                   value={editPay.form.paymentDate}
-                  onChange={(e) => setEditPay({ ...editPay, form: { ...editPay.form, paymentDate: e.target.value } })}
+                  onChange={(v) => setEditPay({ ...editPay, form: { ...editPay.form, paymentDate: v } })}
                 />
               </label>
               <label className="block">

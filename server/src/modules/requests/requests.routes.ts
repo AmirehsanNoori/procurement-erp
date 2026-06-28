@@ -27,6 +27,7 @@ const upsertSchema = z.object({
   estimatedAmount: numField,
   cost: numField,
   supplierId: z.string().optional().nullable(),
+  assigneeId: z.string().optional().nullable(),
   status: z.string().optional(),
   followUpDate: dateField,
   deliveryDate: dateField,
@@ -70,7 +71,11 @@ router.get(
     const [requests, total] = await Promise.all([
       prisma.request.findMany({
         where,
-        include: { supplier: true, _count: { select: { quotations: true } } },
+        include: {
+          supplier: true,
+          assignee: { select: { id: true, fullName: true } },
+          _count: { select: { quotations: true } },
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take,
@@ -102,6 +107,24 @@ router.get(
   })
 );
 
+// GET /api/:tenantId/requests/assignable-users — active members of this tenant
+// (used to populate the "assign to" dropdown). Defined before /:id so it isn't
+// captured by the param route.
+router.get(
+  '/assignable-users',
+  requirePermission('requests.view'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const members = await prisma.tenantUser.findMany({
+      where: { tenantId, isActive: true, user: { isActive: true } },
+      include: { user: { select: { id: true, fullName: true, email: true } } },
+      orderBy: { user: { fullName: 'asc' } },
+    });
+    const users = members.map((m) => m.user);
+    res.json({ users });
+  })
+);
+
 // GET /api/:tenantId/requests/:id
 router.get(
   '/:id',
@@ -109,7 +132,12 @@ router.get(
   asyncHandler(async (req, res) => {
     const request = await prisma.request.findFirst({
       where: { id: req.params.id, tenantId: req.tenant!.tenantId },
-      include: { supplier: true, quotations: true, invoices: true },
+      include: {
+        supplier: true,
+        assignee: { select: { id: true, fullName: true } },
+        quotations: true,
+        invoices: true,
+      },
     });
     if (!request) throw ApiError.notFound('درخواست یافت نشد');
     res.json({ request });

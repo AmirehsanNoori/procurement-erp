@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { Pagination } from '../components/Pagination';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface Invoice {
   id: string; invoiceNumber: string; status: string; totalAmount: string; dueDate: string | null;
@@ -331,7 +332,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
               {(budgetsQ.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name || `${JMONTHS[b.monthJalali]} ${b.yearJalali}`}</option>)}
             </select>
           </label>
-          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span><input className="input" type="date" dir="ltr" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} required /></label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span><JDatePicker className="input" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.totalAmount')}</span><input className="input" type="number" value={form.netAmount} onChange={(e) => setForm({ ...form, netAmount: e.target.value })} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.vat', 'مالیات')}</span><input className="input" type="number" value={form.vatAmount} onChange={(e) => setForm({ ...form, vatAmount: e.target.value })} /></label>
           <div className="flex items-end gap-2"><button className="btn btn-primary" disabled={saveMut.isPending}>{t('common.save')}</button><button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>{t('common.cancel')}</button></div>
@@ -527,10 +528,10 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
                                   value={row.monthKey}
                                   onChange={(e) => setInstDraft((prev) => prev.map((r, i) => i === idx ? { ...r, monthKey: e.target.value } : r))}
                                 />
-                                <input
-                                  className="input text-xs" type="date" dir="ltr"
+                                <JDatePicker
+                                  className="input text-xs"
                                   value={row.dueDate}
-                                  onChange={(e) => setInstDraft((prev) => prev.map((r, i) => i === idx ? { ...r, dueDate: e.target.value } : r))}
+                                  onChange={(v) => setInstDraft((prev) => prev.map((r, i) => i === idx ? { ...r, dueDate: v } : r))}
                                 />
                                 <select
                                   className="input text-xs w-28"
@@ -674,15 +675,15 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.accounting.dueDate')}</span>
-                <input className="input" type="date" dir="ltr" value={acctEdit.form.dueDate} onChange={(e) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, dueDate: e.target.value } })} />
+                <JDatePicker className="input" value={acctEdit.form.dueDate} onChange={(v) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, dueDate: v } })} />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.accounting.followUpDate')}</span>
-                <input className="input" type="date" dir="ltr" value={acctEdit.form.followUpDate} onChange={(e) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, followUpDate: e.target.value } })} />
+                <JDatePicker className="input" value={acctEdit.form.followUpDate} onChange={(v) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, followUpDate: v } })} />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.accounting.submissionDate')}</span>
-                <input className="input" type="date" dir="ltr" value={acctEdit.form.accountingSubmissionDate} onChange={(e) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, accountingSubmissionDate: e.target.value } })} />
+                <JDatePicker className="input" value={acctEdit.form.accountingSubmissionDate} onChange={(v) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, accountingSubmissionDate: v } })} />
               </label>
               <label className="flex items-center gap-2 pt-5">
                 <input type="checkbox" checked={acctEdit.form.sentToAccounting} onChange={(e) => setAcctEdit({ ...acctEdit, form: { ...acctEdit.form, sentToAccounting: e.target.checked } })} />
@@ -716,7 +717,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
             {payErr && <div className="mb-2 text-sm text-rose-600">{payErr}</div>}
             <div className="grid gap-3">
               <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('dashboard.quickPay.amountLabel')}</span><input className="input" type="number" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} /></label>
-              <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('dashboard.quickPay.payDateLabel')}</span><input className="input" type="date" dir="ltr" value={pay.date} onChange={(e) => setPay({ ...pay, date: e.target.value })} /></label>
+              <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('dashboard.quickPay.payDateLabel')}</span><JDatePicker className="input" value={pay.date} onChange={(v) => setPay({ ...pay, date: v })} /></label>
               <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('dashboard.quickPay.listNumberLabel')}</span><input className="input" value={pay.listNumber} onChange={(e) => setPay({ ...pay, listNumber: e.target.value })} /></label>
             </div>
             <div className="mt-4 flex justify-end gap-2">

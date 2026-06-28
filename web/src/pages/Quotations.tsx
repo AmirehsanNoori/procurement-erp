@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 const STATUS_COLORS: Record<string, string> = {
   'در انتظار سفارش': 'bg-amber-100 text-amber-700',
@@ -203,11 +204,11 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.form.advancePaymentDate')}</span>
-                <input className="input" type="date" dir="ltr" value={form.advancePaymentDate} onChange={(e) => setForm({ ...form, advancePaymentDate: e.target.value })} />
+                <JDatePicker className="input" value={form.advancePaymentDate} onChange={(v) => setForm({ ...form, advancePaymentDate: v })} />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.form.followUpDate')}</span>
-                <input className="input" type="date" dir="ltr" value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} />
+                <JDatePicker className="input" value={form.followUpDate} onChange={(v) => setForm({ ...form, followUpDate: v })} />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.form.batchNumber')}</span>
@@ -305,7 +306,7 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span>
-                <input className="input" type="date" dir="ltr" value={convert.dueDate} onChange={(e) => setConvert({ ...convert, dueDate: e.target.value })} />
+                <JDatePicker className="input" value={convert.dueDate} onChange={(v) => setConvert({ ...convert, dueDate: v })} />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">

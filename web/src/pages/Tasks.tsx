@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface Task {
   id: string;
@@ -245,11 +246,10 @@ export function Tasks() {
 
               <label className="block">
                 <span className="text-xs font-bold text-slate-600">{t('tasks.form.dueDate')}</span>
-                <input
-                  type="date"
+                <JDatePicker
                   className="input mt-1"
                   value={form.dueDate}
-                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                  onChange={(v) => setForm({ ...form, dueDate: v })}
                 />
               </label>
 

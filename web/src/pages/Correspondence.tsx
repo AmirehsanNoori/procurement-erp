@@ -4,6 +4,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface Letter {
   id: string;
@@ -424,20 +425,18 @@ export function Correspondence() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">تاریخ نامه</label>
-                  <input
-                    type="date"
+                  <JDatePicker
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={form.letterDate}
-                    onChange={(e) => setForm((p) => ({ ...p, letterDate: e.target.value }))}
+                    onChange={(v) => setForm((p) => ({ ...p, letterDate: v }))}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">تاریخ دریافت</label>
-                  <input
-                    type="date"
+                  <JDatePicker
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={form.receivedDate}
-                    onChange={(e) => setForm((p) => ({ ...p, receivedDate: e.target.value }))}
+                    onChange={(v) => setForm((p) => ({ ...p, receivedDate: v }))}
                   />
                 </div>
                 <div>

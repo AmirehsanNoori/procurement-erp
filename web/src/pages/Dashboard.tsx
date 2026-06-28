@@ -6,6 +6,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface BudgetSummary {
   id: string;
@@ -320,7 +321,7 @@ export function Dashboard() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('dashboard.quickPay.payDateLabel')}</span>
-                <input className="input" type="date" dir="ltr" value={payModal.date} onChange={(e) => setPayModal({ ...payModal, date: e.target.value })} />
+                <JDatePicker className="input" value={payModal.date} onChange={(v) => setPayModal({ ...payModal, date: v })} />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('dashboard.quickPay.listNumberLabel')}</span>

@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate, faMoney } from '../lib/format';
 import { Pagination } from '../components/Pagination';
+import { JDatePicker } from '../components/JDatePicker';
 
 const STATUS_COLORS: Record<string, string> = {
   'جدید': 'bg-blue-100 text-blue-700',
@@ -25,6 +26,7 @@ interface RequestRow {
   status: string;
   estimatedAmount: string | null;
   supplier: { id: string; name: string } | null;
+  assignee: { id: string; fullName: string } | null;
   followUpDate: string | null;
   archived: boolean;
   _count?: { quotations: number };
@@ -79,6 +81,7 @@ const STATUSES = [
 const emptyForm = {
   requestNumber: '', title: '', description: '', estimatedAmount: '',
   status: 'جدید', category: '', orderNo: '', notes: '', supplierId: '',
+  assigneeId: '',
   followUpDate: '', deliveryDate: '',
 };
 
@@ -127,6 +130,12 @@ export function Requests({ archived = false }: { archived?: boolean }) {
   const suppliersQ = useQuery({
     queryKey: ['suppliers-opt', tid],
     queryFn: async () => (await api.get(`/${tid}/suppliers`)).data.suppliers as { id: string; name: string }[],
+    enabled: Boolean(tid),
+  });
+
+  const usersQ = useQuery({
+    queryKey: ['assignable-users', tid],
+    queryFn: async () => (await api.get(`/${tid}/requests/assignable-users`)).data.users as { id: string; fullName: string }[],
     enabled: Boolean(tid),
   });
 
@@ -186,6 +195,7 @@ export function Requests({ archived = false }: { archived?: boolean }) {
       orderNo: '',
       notes: '',
       supplierId: r.supplier?.id ?? '',
+      assigneeId: r.assignee?.id ?? '',
       followUpDate: r.followUpDate ? r.followUpDate.slice(0, 10) : '',
       deliveryDate: '',
     });
@@ -205,6 +215,7 @@ export function Requests({ archived = false }: { archived?: boolean }) {
         orderNo: form.orderNo || null,
         notes: form.notes || null,
         supplierId: form.supplierId || null,
+        assigneeId: form.assigneeId || null,
         followUpDate: form.followUpDate || null,
         deliveryDate: form.deliveryDate || null,
       };
@@ -317,12 +328,19 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                 </select>
               </label>
               <label className="block">
+                <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.assignee', 'مسئول (اساین)')}</span>
+                <select className="input" value={form.assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
+                  <option value="">{t('requests.form.unassigned', 'بدون مسئول')}</option>
+                  {(usersQ.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                </select>
+              </label>
+              <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.followUpDate')}</span>
-                <input className="input" type="date" dir="ltr" value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} />
+                <JDatePicker className="input" value={form.followUpDate} onChange={(v) => setForm({ ...form, followUpDate: v })} />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.deliveryDate')}</span>
-                <input className="input" type="date" dir="ltr" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} />
+                <JDatePicker className="input" value={form.deliveryDate} onChange={(v) => setForm({ ...form, deliveryDate: v })} />
               </label>
               <label className="block sm:col-span-2">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.notes')}</span>
@@ -373,6 +391,12 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                         <div className="text-xs font-bold text-blue-700">{r.requestNumber}</div>
                         {r.description && <div className="mt-0.5 text-[11px] text-slate-600 line-clamp-2">{r.description}</div>}
                         {r.supplier && <div className="mt-1 text-[10px] text-slate-400">{r.supplier.name}</div>}
+                        {r.assignee && (
+                          <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700">
+                            <span className="flex h-3 w-3 items-center justify-center rounded-full bg-indigo-200 text-[7px]">{r.assignee.fullName.charAt(0)}</span>
+                            {r.assignee.fullName}
+                          </div>
+                        )}
                         <div className="mt-1 flex items-center justify-between">
                           {r.estimatedAmount && <span className="text-[10px] font-bold text-emerald-700">{faMoney(r.estimatedAmount)}</span>}
                           {(r._count?.quotations ?? 0) > 0 && (
@@ -420,6 +444,7 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                 <th className="p-3">{t('requests.cols.title')}</th>
                 <th className="p-3">{t('requests.form.estimatedAmount')}</th>
                 <th className="p-3">{t('requests.cols.supplier')}</th>
+                <th className="p-3">{t('requests.cols.assignee', 'مسئول')}</th>
                 <th className="p-3">{t('requests.cols.status')}</th>
                 <th className="p-3">{t('requests.cols.date')}</th>
                 <th className="p-3">{t('quotations.title')}</th>
@@ -433,6 +458,14 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                   <td className="p-3">{r.description ?? '—'}</td>
                   <td className="p-3">{r.estimatedAmount ? faMoney(r.estimatedAmount) : '—'}</td>
                   <td className="p-3">{r.supplier?.name ?? '—'}</td>
+                  <td className="p-3">
+                    {r.assignee ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-200 text-[9px]">{r.assignee.fullName.charAt(0)}</span>
+                        {r.assignee.fullName}
+                      </span>
+                    ) : <span className="text-xs text-slate-400">—</span>}
+                  </td>
                   <td className="p-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
                   </td>
@@ -474,7 +507,7 @@ export function Requests({ archived = false }: { archived?: boolean }) {
               ))}
               {(data?.requests ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">{t('requests.empty')}</td>
+                  <td colSpan={9} className="p-8 text-center text-slate-400">{t('requests.empty')}</td>
                 </tr>
               )}
             </tbody>

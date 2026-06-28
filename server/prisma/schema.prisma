@@ -94,6 +94,7 @@ model User {
   overrides     UserPermissionOverride[]
   refreshTokens RefreshToken[]
   approvalVotes ApprovalVote[]
+  assignedRequests Request[] @relation("RequestAssignee")
 
   @@map("users")
 }
@@ -309,6 +310,7 @@ model Request {
   ioidRemark         String?
   cost               Decimal?  @db.Decimal(18, 2)
   archived           Boolean   @default(false)
+  assigneeId         String?
   createdById        String?
   updatedById        String?
   createdAt          DateTime  @default(now())
@@ -316,6 +318,7 @@ model Request {
 
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier   Supplier?   @relation(fields: [supplierId], references: [id])
+  assignee   User?       @relation("RequestAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   quotations Quotation[]
   invoices         Invoice[]
   correspondences  Correspondence[]
@@ -323,6 +326,7 @@ model Request {
   @@unique([tenantId, requestNumber])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([assigneeId])
   @@map("requests")
 }
 

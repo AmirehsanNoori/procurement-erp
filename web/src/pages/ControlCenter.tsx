@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 // 12 exact IOID columns per spec §12
 interface IoidRow {
@@ -268,12 +269,12 @@ export function ControlCenter() {
                       {/* DOCUMENT DATE — full editor only */}
                       <td className="p-1">
                         {isFullEditor
-                          ? <input className="input text-xs" type="date" dir="ltr" value={form.documentDate} onChange={(e) => setForm({ ...form, documentDate: e.target.value })} />
+                          ? <JDatePicker className="input text-xs" value={form.documentDate} onChange={(v) => setForm({ ...form, documentDate: v })} />
                           : faDate(r.documentDate)}
                       </td>
                       {/* RECEIVED DATE — always editable */}
                       <td className="p-1">
-                        <input className="input text-xs" type="date" dir="ltr" value={form.receivedDate} onChange={(e) => setForm({ ...form, receivedDate: e.target.value })} />
+                        <JDatePicker className="input text-xs" value={form.receivedDate} onChange={(v) => setForm({ ...form, receivedDate: v })} />
                       </td>
                       {/* WEEKLY SEGM — full editor only */}
                       <td className="p-1">

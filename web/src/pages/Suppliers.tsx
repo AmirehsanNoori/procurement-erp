@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface SupplierContact { id: string; fullName: string; role: string | null; phone: string | null; email: string | null; notes: string | null; isPrimary: boolean; }
 interface SupplierInteraction { id: string; type: string; subject: string | null; body: string | null; interactionDate: string | null; followUpDate: string | null; createdAt: string; }
@@ -385,8 +386,8 @@ export function Suppliers() {
                       {['یادداشت', 'تماس تلفنی', 'جلسه', 'ایمیل', 'بازدید'].map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                     <input className="input" placeholder="موضوع" value={intForm.subject} onChange={(e) => setIntForm((p) => ({ ...p, subject: e.target.value }))} />
-                    <input type="date" className="input" value={intForm.interactionDate} onChange={(e) => setIntForm((p) => ({ ...p, interactionDate: e.target.value }))} />
-                    <input type="date" className="input" placeholder="پیگیری" value={intForm.followUpDate} onChange={(e) => setIntForm((p) => ({ ...p, followUpDate: e.target.value }))} />
+                    <JDatePicker className="input" value={intForm.interactionDate} onChange={(v) => setIntForm((p) => ({ ...p, interactionDate: v }))} />
+                    <JDatePicker className="input" placeholder="پیگیری" value={intForm.followUpDate} onChange={(v) => setIntForm((p) => ({ ...p, followUpDate: v }))} />
                     <textarea className="input col-span-2 resize-y" rows={2} placeholder="توضیحات..." value={intForm.body} onChange={(e) => setIntForm((p) => ({ ...p, body: e.target.value }))} />
                     <button className="btn btn-primary text-xs px-3 py-1 col-span-2 w-fit mr-auto" disabled={addIntMut.isPending} onClick={() => addIntMut.mutate()}>+ افزودن</button>
                   </div>
@@ -420,8 +421,8 @@ export function Suppliers() {
                     <select className="input" value={blanketForm.status} onChange={(e) => setBlanketForm((p) => ({ ...p, status: e.target.value }))}>
                       {['فعال', 'تکمیل شده', 'لغو شده', 'منقضی'].map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <input type="date" className="input" placeholder="شروع" value={blanketForm.startDate} onChange={(e) => setBlanketForm((p) => ({ ...p, startDate: e.target.value }))} />
-                    <input type="date" className="input" placeholder="پایان" value={blanketForm.endDate} onChange={(e) => setBlanketForm((p) => ({ ...p, endDate: e.target.value }))} />
+                    <JDatePicker className="input" placeholder="شروع" value={blanketForm.startDate} onChange={(v) => setBlanketForm((p) => ({ ...p, startDate: v }))} />
+                    <JDatePicker className="input" placeholder="پایان" value={blanketForm.endDate} onChange={(v) => setBlanketForm((p) => ({ ...p, endDate: v }))} />
                     <button className="btn btn-primary text-xs px-3 py-1 col-span-2 w-fit mr-auto" disabled={addBlanketMut.isPending || !blanketForm.description} onClick={() => addBlanketMut.mutate()}>+ افزودن</button>
                   </div>
                   {blanketQ.isLoading ? <div className="text-center py-4 text-slate-400">...</div> : (
