@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "regions": ["hnd1"],
   "buildCommand": "cd server && node node_modules/prisma/build/index.js generate && cd .. && npm run build --prefix web",
   "outputDirectory": "web/dist",
   "installCommand": "npm install --prefix server && npm install --prefix web --include=dev",
