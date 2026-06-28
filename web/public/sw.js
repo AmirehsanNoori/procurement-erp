@@ -1,9 +1,12 @@
-const CACHE = 'erp-v1';
+const CACHE = 'erp-v2';
 const STATIC = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon.svg',
+  '/icon-180.png',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 // Install: pre-cache shell

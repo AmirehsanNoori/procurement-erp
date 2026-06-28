@@ -26,7 +26,27 @@ export async function resolveTenantAccess(
     include: { tenant: true, role: true, user: true },
   });
 
-  if (!membership || !membership.isActive) return null;
+  // Super admins implicitly have full access to every active tenant, even ones
+  // they were never enrolled in (e.g. orgs they just created). Synthesize access.
+  if (!membership) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user?.isSuperAdmin) {
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant || !tenant.isActive) return null;
+      const all = await prisma.permission.findMany({ select: { key: true } });
+      return {
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        tenantCode: tenant.code,
+        roleId: '',
+        roleName: 'مدیر کل',
+        permissions: all.map((p) => p.key),
+      };
+    }
+    return null;
+  }
+
+  if (!membership.isActive) return null;
   if (!membership.tenant.isActive) return null;
 
   const roleName = membership.role.name as RoleName;
@@ -67,8 +87,24 @@ export async function resolveTenantAccess(
   };
 }
 
-/** List the tenants a user can access (active memberships, active tenants). */
+/** List the tenants a user can access (active memberships, active tenants).
+ *  Super admins see every active tenant, even ones they aren't enrolled in. */
 export async function listUserTenants(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (user?.isSuperAdmin) {
+    const tenants = await prisma.tenant.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+    return tenants.map((t) => ({
+      tenantId: t.id,
+      name: t.name,
+      code: t.code,
+      roleName: 'مدیر کل',
+    }));
+  }
+
   const memberships = await prisma.tenantUser.findMany({
     where: { userId, isActive: true, tenant: { isActive: true } },
     include: { tenant: true, role: true },
