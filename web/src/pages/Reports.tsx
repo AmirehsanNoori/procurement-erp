@@ -1,9 +1,149 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
 import { faMoney, JMONTHS } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
+import { SearchableSelect } from '../components/SearchableSelect';
+import { downloadBlob } from '../lib/download';
+
+const REPORT_TYPES: { value: string; label: string }[] = [
+  { value: 'invoices', label: 'فاکتورهای باز' },
+  { value: 'overdue', label: 'معوقات' },
+  { value: 'budget', label: 'مصرف بودجه' },
+  { value: 'suppliers', label: 'خلاصه تأمین‌کنندگان' },
+  { value: 'schedule', label: 'برنامه پرداخت' },
+  { value: 'kpi', label: 'KPI / صرفه‌جویی' },
+];
+const INVOICE_STATUSES = ['در انتظار بودجه', 'در انتظار تأیید', 'تأیید شده', 'آماده پرداخت', 'نیمه پرداخت', 'پرداخت کامل'];
+
+interface ReportResult {
+  columns: string[];
+  rows: Record<string, string | number>[];
+  kpis?: { label: string; value: number }[];
+}
+
+const MONEY_COLS = new Set(['جمع کل', 'پرداخت‌شده', 'مانده', 'مبلغ تأییدشده', 'رزرو شده', 'پرداخت واقعی', 'باقیمانده', 'مقدار']);
+
+function ReportBuilder({ tid }: { tid: string }) {
+  const [type, setType] = useState('invoices');
+  const [supplier, setSupplier] = useState('');
+  const [status, setStatus] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [submitted, setSubmitted] = useState<{ type: string; supplier: string; status: string; from: string; to: string } | null>(null);
+
+  const suppliersQ = useQuery({
+    queryKey: ['suppliers-opt', tid],
+    queryFn: async () => (await api.get(`/${tid}/suppliers`)).data.suppliers as { id: string; name: string }[],
+    enabled: Boolean(tid),
+  });
+
+  const params = (s: NonNullable<typeof submitted>) => ({
+    type: s.type,
+    supplier: s.supplier || undefined,
+    status: s.status || undefined,
+    from: s.from || undefined,
+    to: s.to || undefined,
+  });
+
+  const reportQ = useQuery({
+    queryKey: ['report-run', tid, submitted],
+    queryFn: async () => (await api.get(`/${tid}/reports/run`, { params: params(submitted!) })).data as ReportResult,
+    enabled: Boolean(tid && submitted),
+  });
+
+  const invoiceFilters = type === 'invoices' || type === 'overdue' || type === 'schedule';
+  const result = reportQ.data;
+
+  return (
+    <div className="card mb-4">
+      <h2 className="text-sm font-bold text-slate-700 mb-3">📑 گزارش‌ساز</h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">نوع گزارش</span>
+          <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
+            {REPORT_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">تأمین‌کننده</span>
+          <SearchableSelect
+            value={supplier}
+            onChange={setSupplier}
+            placeholder="همه"
+            disabled={!invoiceFilters}
+            options={[{ value: '', label: 'همه' }, ...(suppliersQ.data ?? []).map((s) => ({ value: s.name, label: s.name }))]}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">وضعیت</span>
+          <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} disabled={!invoiceFilters}>
+            <option value="">همه</option>
+            {INVOICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">از تاریخ</span>
+          <JDatePicker className="input" value={from} onChange={setFrom} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-bold text-slate-600">تا تاریخ</span>
+          <JDatePicker className="input" value={to} onChange={setTo} />
+        </label>
+        <div className="flex items-end gap-2">
+          <button className="btn btn-primary" onClick={() => setSubmitted({ type, supplier, status, from, to })}>اجرا</button>
+          <button
+            className="btn btn-outline"
+            disabled={!submitted}
+            onClick={() => downloadBlob(`/${tid}/reports/run?` + new URLSearchParams({ ...params(submitted!), format: 'xlsx' } as Record<string, string>).toString(), `report-${type}.xlsx`)}
+          >📥 Excel</button>
+        </div>
+      </div>
+
+      {reportQ.isFetching && <div className="py-6 text-center text-slate-400 text-sm">در حال اجرا...</div>}
+
+      {result && !reportQ.isFetching && (
+        <div className="mt-4">
+          {result.kpis && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-3">
+              {result.kpis.map((k) => (
+                <div key={k.label} className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">{k.label}</div>
+                  <div className="text-lg font-bold text-slate-800 mt-1">{faMoney(k.value)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            {result.rows.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-sm">موردی یافت نشد</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-right text-slate-500">
+                    {result.columns.map((c) => <th key={c} className="p-2">{c}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      {result.columns.map((c) => (
+                        <td key={c} className="p-2">{MONEY_COLS.has(c) && typeof row[c] === 'number' ? faMoney(row[c] as number) : row[c]}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface BudgetSummary {
   id: string;
@@ -66,24 +206,17 @@ export function Reports() {
     staleTime: 120_000,
   });
 
-  if (isLoading) {
-    return (
-      <Layout title={t('reports.title')}>
-        <div className="py-12 text-center text-slate-400">{t('common.loading')}</div>
-      </Layout>
-    );
-  }
-
-  if (!data) return <Layout title={t('reports.title')}><div /></Layout>;
-
-  const p = data.portfolio;
-  const totalInvCount = Object.values(data.invoiceBreakdown).reduce((a, b) => a + b, 0);
-
-  // Efficiency: approved vs required
-  const budgetsWithGap = data.budgets.filter((b) => b.gapApprovedVsRequired < 0);
+  const p = data?.portfolio;
+  const totalInvCount = data ? Object.values(data.invoiceBreakdown).reduce((a, b) => a + b, 0) : 0;
+  const budgetsWithGap = data ? data.budgets.filter((b) => b.gapApprovedVsRequired < 0) : [];
 
   return (
     <Layout title={t('reports.title')}>
+      <ReportBuilder tid={tid} />
+
+      {isLoading && <div className="py-12 text-center text-slate-400">{t('common.loading')}</div>}
+      {!isLoading && data && p && (
+      <>
       {/* Portfolio KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
         {[
@@ -252,6 +385,8 @@ export function Reports() {
           ))}
         </div>
       </div>
+      </>
+      )}
     </Layout>
   );
 }
