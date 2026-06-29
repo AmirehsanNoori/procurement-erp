@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd server && node node_modules/prisma/build/index.js generate && cd .. && npm run build --prefix web",
+  "buildCommand": "cd server && node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js generate && cd .. && npm run build --prefix web",
   "outputDirectory": "web/dist",
   "installCommand": "npm install --prefix server && npm install --prefix web --include=dev",
   "rewrites": [
