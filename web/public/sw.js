@@ -1,4 +1,4 @@
-const CACHE = 'erp-v2';
+const CACHE = 'erp-v3';
 const STATIC = [
   '/',
   '/index.html',
@@ -16,7 +16,8 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate: clean old caches
+// Activate: clean old caches (bumping CACHE purges the stale index.html that the
+// previous cache-first strategy pinned, which froze users on old builds)
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -25,17 +26,21 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch strategy:
-//   - API calls (/api/...) → network-first with 5s timeout, fallback to cache
-//   - Everything else → cache-first with network fallback
+// HTML document / navigation requests are served network-first so a new deploy's
+// index.html (and therefore its new hashed asset URLs) reaches the user right
+// away. Hashed assets under /assets/ are immutable → cache-first.
+function isNavigation(request, url) {
+  return request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html');
+}
+
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
 
-  if (url.pathname.startsWith('/api/')) {
-    // Network-first for API
+  // Network-first for API calls and for the HTML shell.
+  if (url.pathname.startsWith('/api/') || isNavigation(request, url)) {
     e.respondWith(
       Promise.race([
         fetch(request).then((res) => {
@@ -46,10 +51,10 @@ self.addEventListener('fetch', (e) => {
           return res;
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
-      ]).catch(() => caches.match(request))
+      ]).catch(() => caches.match(request).then((c) => c || caches.match('/index.html')))
     );
   } else {
-    // Cache-first for assets
+    // Cache-first for immutable hashed assets.
     e.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
