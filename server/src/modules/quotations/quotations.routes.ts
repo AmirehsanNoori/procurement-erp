@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
@@ -7,6 +9,34 @@ import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { INVOICE_STATUS } from '../finance/calc';
 import { recalcInvoiceStatus } from '../invoices/service';
+import { env } from '../../config/env';
+
+/** Best-effort copy of an entity's documents to another entity (used on PI→invoice convert). */
+async function copyEntityDocuments(tenantId: string, fromType: string, fromId: string, toType: string, toId: string, userId: string): Promise<void> {
+  try {
+    const docs = await prisma.document.findMany({ where: { tenantId, entityType: fromType, entityId: fromId } });
+    if (!docs.length) return;
+    const destDir = path.resolve(env.uploadDir, tenantId, toType, toId);
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const d of docs) {
+      const srcAbs = path.resolve(env.uploadDir, d.storagePath);
+      if (!fs.existsSync(srcAbs)) continue;
+      const destAbs = path.join(destDir, d.filename);
+      fs.copyFileSync(srcAbs, destAbs);
+      await prisma.document.create({
+        data: {
+          tenantId, entityType: toType, entityId: toId,
+          category: d.category, filename: d.filename, originalFilename: d.originalFilename,
+          mimeType: d.mimeType, size: d.size,
+          storagePath: path.join(tenantId, toType, toId, d.filename),
+          uploadedById: userId,
+        },
+      });
+    }
+  } catch {
+    // Non-fatal: conversion succeeds even if attachment copy fails.
+  }
+}
 
 const router = Router({ mergeParams: true });
 
@@ -252,6 +282,8 @@ router.post(
       await tx.quotation.update({ where: { id: q.id }, data: { archived: true, status: 'تبدیل شده' } });
       return created;
     });
+    // Carry the quotation's attachments over to the new invoice.
+    await copyEntityDocuments(tenantId, 'quotation', q.id, 'invoice', invoice.id, req.auth!.userId);
     // Reflect any quotation advance in the new invoice's status immediately.
     await recalcInvoiceStatus(tenantId, invoice.id);
     const fresh = await prisma.invoice.findUnique({ where: { id: invoice.id }, include: { installments: true } });

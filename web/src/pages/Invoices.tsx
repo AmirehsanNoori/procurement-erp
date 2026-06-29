@@ -9,6 +9,7 @@ import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { ExcelButton } from '../components/ExcelButton';
+import { EntityAttachments } from '../components/EntityAttachments';
 
 interface Invoice {
   id: string; invoiceNumber: string; status: string; totalAmount: string; dueDate: string | null;
@@ -507,6 +508,12 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
                         <span className="font-bold text-slate-500">{t('invoices.detail.accountingNotes')}: </span>{d.accountingNotes}
                       </div>
                     )}
+
+                    {/* Attachments */}
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-600 mb-2">📎 فایل‌ها</h3>
+                      <EntityAttachments entityType="invoice" entityId={d.id} />
+                    </div>
 
                     {/* Installments */}
                     {(d.installments.length > 0 || can('invoices.edit')) && (

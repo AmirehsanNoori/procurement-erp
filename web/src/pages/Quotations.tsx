@@ -8,6 +8,7 @@ import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { ExcelButton } from '../components/ExcelButton';
+import { EntityAttachments } from '../components/EntityAttachments';
 
 const STATUS_COLORS: Record<string, string> = {
   'در انتظار سفارش': 'bg-amber-100 text-amber-700',
@@ -298,6 +299,11 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
                 <textarea className="input min-h-[60px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </label>
 
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-xs font-bold text-slate-600">📎 فایل‌ها</span>
+                <EntityAttachments entityType="quotation" entityId={editQuot?.id ?? null} />
+              </div>
+
               <div className="sm:col-span-2 flex gap-2 pt-1">
                 <button className="btn btn-primary" disabled={saveMut.isPending}>
                   {saveMut.isPending ? t('common.saving') : t('common.save')}
@@ -474,6 +480,8 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
               <span className="mb-1 block text-xs font-bold text-slate-600">یادداشت</span>
               <textarea className="input min-h-[50px]" value={convert.notes} onChange={(e) => setConvert({ ...convert, notes: e.target.value })} />
             </label>
+
+            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700 mb-3">📎 فایل‌های پیوست پیش‌فاکتور به‌صورت خودکار به فاکتور جدید منتقل می‌شوند.</div>
 
             <div className="mt-2 flex justify-end gap-2">
               <button className="btn btn-outline" onClick={() => setConvert(null)}>{t('common.cancel')}</button>

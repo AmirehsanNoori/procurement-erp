@@ -9,6 +9,7 @@ import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { ExcelButton } from '../components/ExcelButton';
+import { EntityAttachments } from '../components/EntityAttachments';
 
 const STATUS_COLORS: Record<string, string> = {
   'جدید': 'bg-blue-100 text-blue-700',
@@ -351,6 +352,11 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.notes')}</span>
                 <textarea className="input min-h-[70px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </label>
+
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-xs font-bold text-slate-600">📎 فایل‌ها</span>
+                <EntityAttachments entityType="request" entityId={editReq?.id ?? null} />
+              </div>
 
               <div className="sm:col-span-2 flex gap-2 pt-1">
                 <button className="btn btn-primary" disabled={saveMut.isPending}>
