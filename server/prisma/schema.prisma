@@ -7,11 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Direct (non-pooled) connection used by `prisma migrate deploy`; pgbouncer
-  // transaction pooling on DATABASE_URL can't take the advisory locks migrations need.
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ────────────────────────────────────────────────
@@ -356,7 +353,6 @@ model Quotation {
   accountingReference String?
   notes               String?
   archived            Boolean   @default(false)
-  isWinner            Boolean   @default(false) // RFQ: chosen winning quote for its request
   createdById         String?
   updatedById         String?
   createdAt           DateTime  @default(now())

@@ -67,8 +67,11 @@ const schema = z.object({
 
 const include = { request: true, supplier: true, budget: true } as const;
 
-// Status applied to the non-chosen quotations when an RFQ winner is selected.
+// Status applied to the non-chosen quotations when an RFQ winner is selected,
+// and to the winning quotation. The winner is derived from these (active winner
+// + at least one loser) so no dedicated DB column/migration is required.
 const RFQ_LOSER_STATUS = 'بازنده RFQ';
+const WINNER_STATUS = 'تأیید شده';
 
 router.get(
   '/',
@@ -182,12 +185,14 @@ router.post(
       // Losers: every other quotation of the same request → archived, marked as RFQ loser.
       await tx.quotation.updateMany({
         where: { tenantId, requestId: winner.requestId, id: { not: winner.id } },
-        data: { archived: true, isWinner: false, status: RFQ_LOSER_STATUS, updatedById: req.auth!.userId },
+        data: { archived: true, status: RFQ_LOSER_STATUS, updatedById: req.auth!.userId },
       });
-      // Winner: active + flagged + approved — the request's main quotation.
+      // Winner: active + approved — the request's main quotation. The winner is
+      // identified by being the active 'تأیید شده' quote alongside RFQ losers
+      // (no dedicated column needed, so no schema migration on deploy).
       await tx.quotation.update({
         where: { id: winner.id },
-        data: { archived: false, isWinner: true, status: 'تأیید شده', updatedById: req.auth!.userId },
+        data: { archived: false, status: WINNER_STATUS, updatedById: req.auth!.userId },
       });
     });
 
@@ -312,8 +317,9 @@ router.get(
     // Lowest-price marker (cheapest quote that isn't rejected/loser/archived).
     const active = quotations.filter((q) => !['رد شده', 'آرشیو', RFQ_LOSER_STATUS].includes(q.status));
     const lowestId = active.length > 0 ? active[0].id : null;
-    // A winner may already be chosen explicitly; otherwise none is selected yet.
-    const chosenWinnerId = quotations.find((q) => q.isWinner)?.id ?? null;
+    // A winner is "chosen" when RFQ losers exist; it's the active approved quote.
+    const hasLosers = quotations.some((q) => q.status === RFQ_LOSER_STATUS);
+    const chosenWinnerId = hasLosers ? (quotations.find((q) => !q.archived && q.status === WINNER_STATUS)?.id ?? null) : null;
 
     const result = quotations.map((q) => ({
       id: q.id,
@@ -330,7 +336,7 @@ router.get(
       paymentBatchNumber: q.paymentBatchNumber,
       archived: q.archived,
       isLowest: q.id === lowestId,
-      isWinner: q.isWinner,
+      isWinner: q.id === chosenWinnerId,
     }));
 
     res.json({
