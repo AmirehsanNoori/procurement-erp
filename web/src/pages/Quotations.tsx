@@ -57,7 +57,9 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   });
 
   const suppliersQ = useQuery({ queryKey: ['suppliers-opt', tid], queryFn: async () => (await api.get(`/${tid}/suppliers`)).data.suppliers as { id: string; name: string }[], enabled: Boolean(tid) });
-  const requestsQ = useQuery({ queryKey: ['requests-opt', tid], queryFn: async () => (await api.get(`/${tid}/requests`)).data.requests as { id: string; requestNumber: string; description: string | null }[], enabled: Boolean(tid) && !archived });
+  // Include archived requests: once a request gets its first quotation it is
+  // archived, but we must still be able to add further quotations to it.
+  const requestsQ = useQuery({ queryKey: ['requests-opt', tid], queryFn: async () => (await api.get(`/${tid}/requests`, { params: { archived: 'all', limit: 200 } })).data.requests as { id: string; requestNumber: string; description: string | null }[], enabled: Boolean(tid) && !archived });
   const budgetsQ = useQuery({ queryKey: ['budgets-opt', tid], queryFn: async () => (await api.get(`/${tid}/budgets`)).data.budgets as { id: string; name: string | null; monthJalali: number; yearJalali: number }[], enabled: Boolean(tid) });
 
   const budgetOpts = (budgetsQ.data ?? []).map((b) => ({ id: b.id, label: b.name || `${b.monthJalali}/${b.yearJalali}` }));

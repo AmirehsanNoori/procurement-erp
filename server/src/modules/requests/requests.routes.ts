@@ -47,12 +47,15 @@ router.get(
     const tenantId = req.tenant!.tenantId;
     const search = (req.query.search as string | undefined)?.trim();
     const status = req.query.status as string | undefined;
-    const archived = req.query.archived === 'true';
+    // archived: 'true' → only archived, 'all' → both (used by the quotation
+    // picker so additional quotes can target an already-archived request),
+    // anything else → only active.
+    const archivedParam = req.query.archived as string | undefined;
     const { page, limit } = parsePagination(req.query as Record<string, unknown>);
 
     const where: Prisma.RequestWhereInput = {
       tenantId,
-      archived,
+      ...(archivedParam === 'all' ? {} : { archived: archivedParam === 'true' }),
       ...(status ? { status } : {}),
       ...(search
         ? {
@@ -169,9 +172,15 @@ router.post(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
     const data = req.body as z.infer<typeof upsertSchema>;
+    const requestNumber = data.requestNumber.trim();
+    // Request numbers must be unique per tenant — block duplicate registrations
+    // up front with a clear message (the DB constraint is the final guard).
+    const dup = await prisma.request.findFirst({ where: { tenantId, requestNumber } });
+    if (dup) throw ApiError.conflict(`درخواست با شماره «${requestNumber}» قبلاً ثبت شده است`);
     const request = await prisma.request.create({
       data: {
         ...data,
+        requestNumber,
         tenantId,
         status: data.status ?? 'جدید',
         createdById: req.auth!.userId,
@@ -193,9 +202,20 @@ router.patch(
     const existing = await prisma.request.findFirst({ where: { id: req.params.id, tenantId } });
     if (!existing) throw ApiError.notFound('درخواست یافت نشد');
 
+    const body = { ...req.body } as Partial<z.infer<typeof upsertSchema>>;
+    if (typeof body.requestNumber === 'string') {
+      const requestNumber = body.requestNumber.trim();
+      // Reject renaming onto a number already used by another request.
+      const dup = await prisma.request.findFirst({
+        where: { tenantId, requestNumber, NOT: { id: existing.id } },
+      });
+      if (dup) throw ApiError.conflict(`درخواست با شماره «${requestNumber}» قبلاً ثبت شده است`);
+      body.requestNumber = requestNumber;
+    }
+
     const request = await prisma.request.update({
       where: { id: existing.id },
-      data: { ...req.body, updatedById: req.auth!.userId },
+      data: { ...body, updatedById: req.auth!.userId },
     });
     res.json({ request });
   })
