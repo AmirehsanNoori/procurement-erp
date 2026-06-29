@@ -42,6 +42,62 @@ const STATUS_COLORS: Record<string, string> = {
   'کنسل شده': 'bg-rose-100 text-rose-600',
 };
 
+interface PlanRow { type: string; number: string; request: string; supplier: string; amount: number; paid: number; remaining: number; date: string | null; status: string }
+interface PlanMonth { key: string; label: string; total: number; rows: PlanRow[] }
+
+function MonthlyPaymentPlan({ tid }: { tid: string }) {
+  const { data } = useQuery({
+    queryKey: ['budget-payment-plan', tid],
+    queryFn: async () => (await api.get(`/${tid}/budgets/payment-plan`)).data.months as PlanMonth[],
+    enabled: Boolean(tid),
+  });
+  if (!data) return null;
+  return (
+    <div className="card mt-4">
+      <h2 className="text-sm font-bold text-slate-700 mb-3">📅 برنامه پرداخت ماهانه</h2>
+      {data.length === 0 ? (
+        <div className="text-center text-slate-400 text-sm py-6">برنامه پرداخت ماهانه‌ای وجود ندارد.</div>
+      ) : (
+        <div className="space-y-4">
+          {data.map((m) => (
+            <div key={m.key}>
+              <div className="mb-1 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-700">{m.label}</h3>
+                <span className="text-xs font-bold text-blue-700">قابل پرداخت: {faMoney(m.total)}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-right text-slate-500">
+                      <th className="p-2">نوع</th><th className="p-2">شماره</th><th className="p-2">درخواست</th><th className="p-2">تأمین‌کننده</th>
+                      <th className="p-2">مبلغ</th><th className="p-2">پرداخت‌شده</th><th className="p-2">مانده</th><th className="p-2">تاریخ</th><th className="p-2">وضعیت</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {m.rows.map((r, i) => (
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="p-2">{r.type}</td>
+                        <td className="p-2 font-bold">{r.number}</td>
+                        <td className="p-2 text-blue-700">{r.request || '—'}</td>
+                        <td className="p-2">{r.supplier}</td>
+                        <td className="p-2">{faMoney(r.amount)}</td>
+                        <td className="p-2 text-emerald-700">{faMoney(r.paid)}</td>
+                        <td className={`p-2 font-bold ${r.remaining > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{faMoney(r.remaining)}</td>
+                        <td className="p-2">{faDate(r.date)}</td>
+                        <td className="p-2">{r.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Budgets() {
   const { t } = useTranslation();
   const { currentTenantId, can } = useAuth();
@@ -401,6 +457,8 @@ export function Budgets() {
           })}
         </div>
       )}
+
+      <MonthlyPaymentPlan tid={tid} />
     </Layout>
   );
 }

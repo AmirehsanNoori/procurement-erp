@@ -5,8 +5,16 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { loadFinance, num, requiredBudget } from '../finance/calc';
+import { dateToJalali, jalaliMonthName } from '../../lib/jalali';
 
 const router = Router({ mergeParams: true });
+
+// GET /api/:tenantId/budgets/payment-plan — payable amounts grouped by Jalali month
+// (invoices + quotation advances), mirroring the prototype's monthly payment plan.
+function jalaliMonthKey(d: Date): string {
+  const [jy, jm] = dateToJalali(d);
+  return `${jy}-${String(jm).padStart(2, '0')}`;
+}
 
 const allocationSchema = z.object({
   yearJalali: z.coerce.number().int(),
@@ -97,6 +105,79 @@ router.get(
       })
       .filter((inv) => inv.status !== 'پرداخت کامل');
     res.json({ invoices: enriched, total: enriched.length });
+  })
+);
+
+router.get(
+  '/payment-plan',
+  requirePermission('monthly_budget.view'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const fin = await loadFinance(prisma, tenantId);
+    const [invoices, quotations, installments] = await Promise.all([
+      prisma.invoice.findMany({ where: { tenantId, archived: false }, include: { supplier: true, request: true } }),
+      prisma.quotation.findMany({ where: { tenantId, archived: false, advancePaymentAmount: { gt: 0 } }, include: { supplier: true, request: true } }),
+      prisma.installment.findMany({ where: { tenantId } }),
+    ]);
+    const budgetById = new Map(fin.budgets.map((b) => [b.id, b]));
+    const instByInvoice = new Map<string, typeof installments>();
+    for (const ins of installments) {
+      const arr = instByInvoice.get(ins.invoiceId) ?? [];
+      arr.push(ins);
+      instByInvoice.set(ins.invoiceId, arr);
+    }
+
+    interface PlanRow { type: string; number: string; request: string; supplier: string; amount: number; paid: number; remaining: number; date: Date | null; status: string }
+    const monthRows = new Map<string, PlanRow[]>();
+    const add = (key: string, row: PlanRow) => {
+      if (!key) return;
+      const arr = monthRows.get(key) ?? [];
+      arr.push(row);
+      monthRows.set(key, arr);
+    };
+
+    for (const inv of invoices) {
+      const total = num(inv.totalAmount);
+      const paid = fin.supplierInvoicePaid(inv);
+      const row: PlanRow = {
+        type: 'فاکتور', number: inv.invoiceNumber, request: inv.request?.requestNumber ?? '',
+        supplier: inv.supplier?.name ?? '—', amount: total, paid, remaining: Math.max(0, total - paid),
+        date: inv.dueDate, status: fin.invoiceAutoStatus(inv),
+      };
+      const keys = new Set<string>();
+      const bud = inv.budgetId ? budgetById.get(inv.budgetId) : null;
+      if (bud) keys.add(`${bud.yearJalali}-${String(bud.monthJalali).padStart(2, '0')}`);
+      if (inv.dueDate) keys.add(jalaliMonthKey(inv.dueDate));
+      for (const ins of instByInvoice.get(inv.id) ?? []) if (ins.monthKey) keys.add(ins.monthKey);
+      keys.forEach((k) => add(k, row));
+    }
+
+    for (const q of quotations) {
+      const amount = num(q.amount);
+      const adv = num(q.advancePaymentAmount);
+      const row: PlanRow = {
+        type: 'پیش‌فاکتور', number: q.quotationNumber ?? '—', request: q.request?.requestNumber ?? '',
+        supplier: q.supplier?.name ?? '—', amount, paid: adv, remaining: Math.max(0, amount - adv),
+        date: q.advancePaymentDate ?? q.date, status: q.status,
+      };
+      const keys = new Set<string>();
+      const bud = q.budgetId ? budgetById.get(q.budgetId) : null;
+      if (bud) keys.add(`${bud.yearJalali}-${String(bud.monthJalali).padStart(2, '0')}`);
+      if (q.advancePaymentDate) keys.add(jalaliMonthKey(q.advancePaymentDate));
+      keys.forEach((k) => add(k, row));
+    }
+
+    const months = [...monthRows.keys()].sort().map((key) => {
+      const [y, m] = key.split('-').map(Number);
+      const rows = (monthRows.get(key) ?? []).sort((a, b) => (a.date ? a.date.getTime() : 0) - (b.date ? b.date.getTime() : 0));
+      return {
+        key,
+        label: `${jalaliMonthName(m)} ${y}`,
+        total: rows.reduce((s, r) => s + r.remaining, 0),
+        rows,
+      };
+    });
+    res.json({ months });
   })
 );
 
