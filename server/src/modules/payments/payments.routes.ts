@@ -5,8 +5,66 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission, requireAnyPermission } from '../../middleware/requirePermission';
 import { recalcInvoiceStatus } from '../invoices/service';
+import { loadFinance, INVOICE_STATUS } from '../finance/calc';
 
 const router = Router({ mergeParams: true });
+
+// GET /api/:tenantId/payments/schedule — upcoming/open payments: every invoice
+// not yet fully paid, with paid/remaining/installments + advance summary.
+router.get(
+  '/schedule',
+  requirePermission('payments.view'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const fin = await loadFinance(prisma, tenantId);
+    const invoices = await prisma.invoice.findMany({
+      where: { tenantId, archived: false },
+      include: { supplier: true, request: true, installments: true },
+      orderBy: { dueDate: 'asc' },
+    });
+
+    const open = invoices
+      .map((inv) => {
+        const paid = fin.supplierInvoicePaid(inv);
+        const total = Number(inv.totalAmount);
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          supplier: inv.supplier?.name ?? '—',
+          requestNumber: inv.request?.requestNumber ?? '',
+          total,
+          paid,
+          remaining: Math.max(0, total - paid),
+          percent: total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0,
+          dueDate: inv.dueDate,
+          batch: inv.batch,
+          status: fin.invoiceAutoStatus(inv),
+          installments: inv.installments.map((i) => ({
+            amount: Number(i.amount),
+            percent: i.percent != null ? Number(i.percent) : null,
+            monthKey: i.monthKey,
+            dueDate: i.dueDate,
+          })),
+        };
+      })
+      .filter((i) => i.status !== INVOICE_STATUS.PAID_FULL);
+
+    const advances = await prisma.quotation.aggregate({
+      where: { tenantId, advancePaymentAmount: { gt: 0 } },
+      _sum: { advancePaymentAmount: true },
+    });
+    const totalActual = (await prisma.payment.aggregate({ where: { tenantId }, _sum: { amount: true } }))._sum.amount;
+
+    res.json({
+      invoices: open,
+      totals: {
+        openRemaining: open.reduce((a, i) => a + i.remaining, 0),
+        advance: Number(advances._sum.advancePaymentAmount ?? 0),
+        actual: Number(totalActual ?? 0),
+      },
+    });
+  })
+);
 
 // GET /api/:tenantId/payments — actual payments + advance payments from quotations.
 router.get(
