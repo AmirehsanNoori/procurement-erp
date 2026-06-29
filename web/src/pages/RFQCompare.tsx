@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
@@ -20,11 +20,13 @@ interface QuotationRow {
   paymentBatchNumber: string | null;
   archived: boolean;
   isLowest: boolean;
+  isWinner: boolean;
 }
 
 interface CompareResult {
   request: { id: string; requestNumber: string; description: string | null };
   quotations: QuotationRow[];
+  winnerId: string | null;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -33,13 +35,16 @@ const STATUS_COLOR: Record<string, string> = {
   'رد شده': 'bg-rose-100 text-rose-700',
   'آرشیو': 'bg-slate-100 text-slate-500',
   'تبدیل شده': 'bg-blue-100 text-blue-700',
+  'بازنده RFQ': 'bg-rose-50 text-rose-500',
 };
 
 export function RFQCompare() {
-  const { currentTenantId } = useAuth();
+  const { currentTenantId, can } = useAuth();
+  const qc = useQueryClient();
   const [requestId, setRequestId] = useState('');
   const [inputVal, setInputVal] = useState('');
   const [fetchError, setFetchError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const tid = currentTenantId ?? '';
 
@@ -68,9 +73,22 @@ export function RFQCompare() {
     enabled: !!tid && !!requestId,
   });
 
+  const selectWinnerMut = useMutation({
+    mutationFn: async (quotationId: string) => api.post(`/${tid}/quotations/${quotationId}/select-winner`),
+    onSuccess: () => {
+      setActionError('');
+      qc.invalidateQueries({ queryKey: ['rfq-compare', tid, requestId] });
+      qc.invalidateQueries({ queryKey: ['quotations', tid] });
+      qc.invalidateQueries({ queryKey: ['budgets', tid] });
+    },
+    onError: (e) => setActionError(apiError(e)),
+  });
+
   const data = compareQ.data;
   const quotations = data?.quotations ?? [];
+  const winnerId = data?.winnerId ?? null;
   const minAmount = quotations.length > 0 ? Math.min(...quotations.map((q) => q.amount)) : 0;
+  const canSelectWinner = can('quotations.edit');
 
   return (
     <Layout title="مقایسه رقابتی پیش‌فاکتورها">
@@ -188,6 +206,7 @@ export function RFQCompare() {
                         <th className="p-3 text-right font-medium text-slate-600">پیش‌پرداخت</th>
                         <th className="p-3 text-right font-medium text-slate-600">وضعیت</th>
                         <th className="p-3 text-right font-medium text-slate-600">یادداشت</th>
+                        {canSelectWinner && <th className="p-3 text-center font-medium text-slate-600">انتخاب برنده</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -197,7 +216,7 @@ export function RFQCompare() {
                         return (
                           <tr
                             key={q.id}
-                            className={`border-b border-slate-100 ${q.isLowest ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
+                            className={`border-b border-slate-100 ${q.isWinner ? 'bg-amber-50' : q.isLowest ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
                           >
                             <td className="p-3 text-slate-400">{i + 1}</td>
                             <td className="p-3 font-mono text-xs text-slate-600">
@@ -205,8 +224,11 @@ export function RFQCompare() {
                             </td>
                             <td className="p-3 font-semibold text-slate-800">
                               {q.supplier}
-                              {q.isLowest && (
-                                <span className="mr-2 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">برنده</span>
+                              {q.isWinner && (
+                                <span className="mr-2 px-1.5 py-0.5 bg-amber-200 text-amber-800 text-xs rounded-full">🏆 برنده</span>
+                              )}
+                              {!q.isWinner && q.isLowest && (
+                                <span className="mr-2 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">کمترین قیمت</span>
                               )}
                             </td>
                             <td className="p-3 text-slate-600">{faDate(q.date)}</td>
@@ -232,6 +254,22 @@ export function RFQCompare() {
                             <td className="p-3 text-slate-500 text-xs max-w-[200px] truncate" title={q.notes ?? ''}>
                               {q.notes || '—'}
                             </td>
+                            {canSelectWinner && (
+                              <td className="p-3 text-center">
+                                {q.isWinner ? (
+                                  <span className="text-amber-700 font-bold text-xs">برندهٔ نهایی</span>
+                                ) : (
+                                  <button
+                                    className="px-3 py-1 text-xs rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                                    disabled={selectWinnerMut.isPending}
+                                    onClick={() => {
+                                      if (confirm(`«${q.supplier}» به عنوان برندهٔ این درخواست انتخاب شود؟ سایر پیش‌فاکتورها به آرشیو بازنده‌ها منتقل می‌شوند.`))
+                                        selectWinnerMut.mutate(q.id);
+                                    }}
+                                  >انتخاب به عنوان برنده</button>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -239,13 +277,33 @@ export function RFQCompare() {
                   </table>
                 </div>
 
-                {/* Winner highlight */}
-                {quotations.find((q) => q.isLowest) && (
+                {actionError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm">{actionError}</div>
+                )}
+
+                {/* Winner highlight — the chosen winner if selected, otherwise the lowest-price suggestion */}
+                {winnerId ? (
+                  (() => {
+                    const w = quotations.find((q) => q.id === winnerId);
+                    if (!w) return null;
+                    return (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-4">
+                        <span className="text-2xl">🏆</span>
+                        <div>
+                          <div className="font-bold text-amber-800">برندهٔ انتخاب‌شده: {w.supplier}</div>
+                          <div className="text-sm text-amber-700">
+                            مبلغ: {faMoney(w.amount)} ریال — این پیش‌فاکتور به عنوان پیش‌فاکتور اصلی درخواست ثبت شد و در بودجه لحاظ می‌شود.
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : quotations.find((q) => q.isLowest) ? (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-4">
-                    <span className="text-2xl">🏆</span>
+                    <span className="text-2xl">💡</span>
                     <div>
                       <div className="font-bold text-emerald-800">
-                        پیشنهاد برتر: {quotations.find((q) => q.isLowest)?.supplier}
+                        کمترین قیمت: {quotations.find((q) => q.isLowest)?.supplier}
                       </div>
                       <div className="text-sm text-emerald-600">
                         مبلغ: {faMoney(minAmount)} ریال
@@ -254,10 +312,11 @@ export function RFQCompare() {
                             تاریخ تحویل: {faDate(quotations.find((q) => q.isLowest)?.deliveryDate)}
                           </span>
                         )}
+                        {canSelectWinner && <span className="mr-3 text-emerald-500">— برای نهایی‌سازی، برنده را از جدول انتخاب کنید.</span>}
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
               </>
             )}
           </div>

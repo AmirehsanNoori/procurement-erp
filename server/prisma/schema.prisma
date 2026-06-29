@@ -353,6 +353,7 @@ model Quotation {
   accountingReference String?
   notes               String?
   archived            Boolean   @default(false)
+  isWinner            Boolean   @default(false) // RFQ: chosen winning quote for its request
   createdById         String?
   updatedById         String?
   createdAt           DateTime  @default(now())

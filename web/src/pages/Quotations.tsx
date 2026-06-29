@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
+import { SearchableSelect } from '../components/SearchableSelect';
 
 const STATUS_COLORS: Record<string, string> = {
   'در انتظار سفارش': 'bg-amber-100 text-amber-700',
@@ -13,6 +14,7 @@ const STATUS_COLORS: Record<string, string> = {
   'رد شده': 'bg-rose-100 text-rose-700',
   'آرشیو': 'bg-slate-100 text-slate-600',
   'تبدیل شده': 'bg-blue-100 text-blue-700',
+  'بازنده RFQ': 'bg-rose-50 text-rose-500',
 };
 
 interface Quotation {
@@ -42,6 +44,7 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   const tid = currentTenantId!;
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [open, setOpen] = useState(false);
   const [editQuot, setEditQuot] = useState<Quotation | null>(null);
   const [form, setForm] = useState<FormState>({ ...emptyForm });
@@ -49,10 +52,10 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   const [convert, setConvert] = useState<{ q: Quotation; invoiceNumber: string; dueDate: string; netAmount: string; vatAmount: string; budgetId: string } | null>(null);
   const [convErr, setConvErr] = useState('');
 
-  const listKey = ['quotations', tid, archived, search];
+  const listKey = ['quotations', tid, archived, search, statusFilter];
   const { data, isLoading } = useQuery({
     queryKey: listKey,
-    queryFn: async () => (await api.get(`/${tid}/quotations`, { params: { archived, search: search || undefined } })).data.quotations as Quotation[],
+    queryFn: async () => (await api.get(`/${tid}/quotations`, { params: { archived, search: search || undefined, status: statusFilter || undefined } })).data.quotations as Quotation[],
     enabled: Boolean(tid),
   });
 
@@ -149,7 +152,13 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   return (
     <Layout title={archived ? t('quotations.archiveTitle') : t('quotations.title')}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <input className="input max-w-xs" placeholder={t('quotations.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2">
+          <input className="input max-w-xs" placeholder={t('quotations.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <select className="input max-w-[12rem]" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">همه وضعیت‌ها</option>
+            {['در انتظار سفارش', 'تأیید شده', 'رد شده', 'تبدیل شده', 'بازنده RFQ', 'آرشیو'].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
         {!archived && can('quotations.create') && (
           <button className="btn btn-primary" onClick={openCreate}>{t('quotations.addNew')}</button>
         )}
@@ -171,24 +180,30 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.form.supplierId')}</span>
-                <select className="input" value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} required>
-                  <option value="">انتخاب...</option>
-                  {(suppliersQ.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <SearchableSelect
+                  value={form.supplierId}
+                  onChange={(v) => setForm({ ...form, supplierId: v })}
+                  required
+                  options={(suppliersQ.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.form.requestId')}</span>
-                <select className="input" value={form.requestId} onChange={(e) => setForm({ ...form, requestId: e.target.value })}>
-                  <option value="">—</option>
-                  {(requestsQ.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.requestNumber}</option>)}
-                </select>
+                <SearchableSelect
+                  value={form.requestId}
+                  onChange={(v) => setForm({ ...form, requestId: v })}
+                  placeholder="—"
+                  options={[{ value: '', label: '— بدون درخواست —' }, ...(requestsQ.data ?? []).map((r) => ({ value: r.id, label: `${r.requestNumber}${r.description ? ' — ' + r.description.slice(0, 30) : ''}` }))]}
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.cols.budget')}</span>
-                <select className="input" value={form.budgetId} onChange={(e) => setForm({ ...form, budgetId: e.target.value })}>
-                  <option value="">—</option>
-                  {budgetOpts.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-                </select>
+                <SearchableSelect
+                  value={form.budgetId}
+                  onChange={(v) => setForm({ ...form, budgetId: v })}
+                  placeholder="—"
+                  options={[{ value: '', label: '— بدون بودجه —' }, ...budgetOpts.map((b) => ({ value: b.id, label: b.label }))]}
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('quotations.form.amount')}</span>

@@ -296,4 +296,43 @@ router.post(
   })
 );
 
+// ── POST /api/:tenantId/import-export/clear ───────────────────────────────────
+// Wipe ALL business data for this tenant (irreversible). Tenant config, users,
+// roles and billing are preserved so the workspace remains usable. The client
+// must send { confirm: "DELETE" } to guard against accidental calls.
+router.post(
+  '/clear',
+  requirePermission('import_export.view'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    if (req.body?.confirm !== 'DELETE') {
+      throw ApiError.badRequest('برای پاک‌سازی باید تأییدیه ارسال شود');
+    }
+
+    // Child → parent order; cascades cover ExpenseItem and ApprovalVote.
+    await prisma.$transaction([
+      prisma.payment.deleteMany({ where: { tenantId } }),
+      prisma.installment.deleteMany({ where: { tenantId } }),
+      prisma.invoice.deleteMany({ where: { tenantId } }),
+      prisma.quotation.deleteMany({ where: { tenantId } }),
+      prisma.budgetAllocation.deleteMany({ where: { tenantId } }),
+      prisma.budget.deleteMany({ where: { tenantId } }),
+      prisma.correspondence.deleteMany({ where: { tenantId } }),
+      prisma.expenseReport.deleteMany({ where: { tenantId } }),
+      prisma.approvalInstance.deleteMany({ where: { tenantId } }),
+      prisma.blanketOrder.deleteMany({ where: { tenantId } }),
+      prisma.supplierInteraction.deleteMany({ where: { tenantId } }),
+      prisma.supplierContact.deleteMany({ where: { tenantId } }),
+      prisma.document.deleteMany({ where: { tenantId } }),
+      prisma.timelineEvent.deleteMany({ where: { tenantId } }),
+      prisma.notification.deleteMany({ where: { tenantId } }),
+      prisma.task.deleteMany({ where: { tenantId } }),
+      prisma.request.deleteMany({ where: { tenantId } }),
+      prisma.supplier.deleteMany({ where: { tenantId } }),
+    ]);
+
+    res.json({ ok: true });
+  })
+);
+
 export default router;

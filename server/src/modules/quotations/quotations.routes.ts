@@ -37,6 +37,9 @@ const schema = z.object({
 
 const include = { request: true, supplier: true, budget: true } as const;
 
+// Status applied to the non-chosen quotations when an RFQ winner is selected.
+const RFQ_LOSER_STATUS = 'بازنده RFQ';
+
 router.get(
   '/',
   requirePermission('quotations.view'),
@@ -128,6 +131,37 @@ router.post(
     const existing = await prisma.quotation.findFirst({ where: { id: req.params.id, tenantId } });
     if (!existing) throw ApiError.notFound('پیش‌فاکتور یافت نشد');
     const quotation = await prisma.quotation.update({ where: { id: existing.id }, data: { archived: true } });
+    res.json({ quotation });
+  })
+);
+
+// POST /:id/select-winner — pick this quotation as the RFQ winner for its request.
+// The winner stays active (so only its amount reserves budget) and becomes the
+// request's main quotation; every other quote of the same request is archived as
+// an RFQ loser. All automatic — budget impact follows from the archive flags.
+router.post(
+  '/:id/select-winner',
+  requirePermission('quotations.edit'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const winner = await prisma.quotation.findFirst({ where: { id: req.params.id, tenantId } });
+    if (!winner) throw ApiError.notFound('پیش‌فاکتور یافت نشد');
+    if (!winner.requestId) throw ApiError.badRequest('این پیش‌فاکتور به هیچ درخواستی متصل نیست');
+
+    await prisma.$transaction(async (tx) => {
+      // Losers: every other quotation of the same request → archived, marked as RFQ loser.
+      await tx.quotation.updateMany({
+        where: { tenantId, requestId: winner.requestId, id: { not: winner.id } },
+        data: { archived: true, isWinner: false, status: RFQ_LOSER_STATUS, updatedById: req.auth!.userId },
+      });
+      // Winner: active + flagged + approved — the request's main quotation.
+      await tx.quotation.update({
+        where: { id: winner.id },
+        data: { archived: false, isWinner: true, status: 'تأیید شده', updatedById: req.auth!.userId },
+      });
+    });
+
+    const quotation = await prisma.quotation.findUnique({ where: { id: winner.id }, include });
     res.json({ quotation });
   })
 );
@@ -243,9 +277,11 @@ router.get(
       orderBy: { amount: 'asc' },
     });
 
-    // Annotate the winner (lowest amount quotation that isn't rejected/cancelled)
-    const active = quotations.filter((q) => !['رد شده', 'آرشیو'].includes(q.status));
+    // Lowest-price marker (cheapest quote that isn't rejected/loser/archived).
+    const active = quotations.filter((q) => !['رد شده', 'آرشیو', RFQ_LOSER_STATUS].includes(q.status));
     const lowestId = active.length > 0 ? active[0].id : null;
+    // A winner may already be chosen explicitly; otherwise none is selected yet.
+    const chosenWinnerId = quotations.find((q) => q.isWinner)?.id ?? null;
 
     const result = quotations.map((q) => ({
       id: q.id,
@@ -262,9 +298,14 @@ router.get(
       paymentBatchNumber: q.paymentBatchNumber,
       archived: q.archived,
       isLowest: q.id === lowestId,
+      isWinner: q.isWinner,
     }));
 
-    res.json({ request: { id: request.id, requestNumber: request.requestNumber, description: request.description }, quotations: result });
+    res.json({
+      request: { id: request.id, requestNumber: request.requestNumber, description: request.description },
+      quotations: result,
+      winnerId: chosenWinnerId,
+    });
   })
 );
 

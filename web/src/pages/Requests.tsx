@@ -7,6 +7,7 @@ import { api, apiError } from '../lib/api';
 import { faDate, faMoney } from '../lib/format';
 import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
+import { SearchableSelect } from '../components/SearchableSelect';
 
 const STATUS_COLORS: Record<string, string> = {
   'جدید': 'bg-blue-100 text-blue-700',
@@ -322,10 +323,12 @@ export function Requests({ archived = false }: { archived?: boolean }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.supplier')}</span>
-                <select className="input" value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
-                  <option value="">—</option>
-                  {(suppliersQ.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <SearchableSelect
+                  value={form.supplierId}
+                  onChange={(v) => setForm({ ...form, supplierId: v })}
+                  placeholder="—"
+                  options={[{ value: '', label: '—' }, ...(suppliersQ.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.assignee', 'مسئول (اساین)')}</span>

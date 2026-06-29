@@ -7,6 +7,7 @@ import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
+import { SearchableSelect } from '../components/SearchableSelect';
 
 interface Invoice {
   id: string; invoiceNumber: string; status: string; totalAmount: string; dueDate: string | null;
@@ -96,7 +97,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
 
   const suppliersQ = useQuery({ queryKey: ['suppliers-opt', tid], queryFn: async () => (await api.get(`/${tid}/suppliers`)).data.suppliers as { id: string; name: string }[], enabled: Boolean(tid) });
   const budgetsQ = useQuery({ queryKey: ['budgets-opt', tid], queryFn: async () => (await api.get(`/${tid}/budgets`)).data.budgets as { id: string; name: string | null; monthJalali: number; yearJalali: number }[], enabled: Boolean(tid) });
-  const requestsQ = useQuery({ queryKey: ['requests-opt', tid], queryFn: async () => (await api.get(`/${tid}/requests`)).data.requests as { id: string; requestNumber: string; description: string | null }[], enabled: Boolean(tid) });
+  const requestsQ = useQuery({ queryKey: ['requests-opt', tid], queryFn: async () => (await api.get(`/${tid}/requests`, { params: { archived: 'all', limit: 200 } })).data.requests as { id: string; requestNumber: string; description: string | null }[], enabled: Boolean(tid) });
 
   const saveMut = useMutation({
     mutationFn: async () => api.post(`/${tid}/invoices`, {
@@ -315,22 +316,28 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
           {err && <div className="sm:col-span-3 text-sm text-rose-600">{err}</div>}
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.invoiceNumber')}</span><input className="input" value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} required /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.supplierId')}</span>
-            <select className="input" value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} required>
-              <option value="">{t('common.select', 'انتخاب...')}</option>
-              {(suppliersQ.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <SearchableSelect
+              value={form.supplierId}
+              onChange={(v) => setForm({ ...form, supplierId: v })}
+              required
+              options={(suppliersQ.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+            />
           </label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.cols.number')}</span>
-            <select className="input" value={form.requestId} onChange={(e) => setForm({ ...form, requestId: e.target.value })}>
-              <option value="">—</option>
-              {(requestsQ.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.requestNumber}{r.description ? ` — ${r.description}` : ''}</option>)}
-            </select>
+            <SearchableSelect
+              value={form.requestId}
+              onChange={(v) => setForm({ ...form, requestId: v })}
+              placeholder="—"
+              options={[{ value: '', label: '—' }, ...(requestsQ.data ?? []).map((r) => ({ value: r.id, label: `${r.requestNumber}${r.description ? ' — ' + r.description : ''}` }))]}
+            />
           </label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.budgetId')}</span>
-            <select className="input" value={form.budgetId} onChange={(e) => setForm({ ...form, budgetId: e.target.value })}>
-              <option value="">—</option>
-              {(budgetsQ.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name || `${JMONTHS[b.monthJalali]} ${b.yearJalali}`}</option>)}
-            </select>
+            <SearchableSelect
+              value={form.budgetId}
+              onChange={(v) => setForm({ ...form, budgetId: v })}
+              placeholder="—"
+              options={[{ value: '', label: '—' }, ...(budgetsQ.data ?? []).map((b) => ({ value: b.id, label: b.name || `${JMONTHS[b.monthJalali]} ${b.yearJalali}` }))]}
+            />
           </label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span><JDatePicker className="input" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.totalAmount')}</span><input className="input" type="number" value={form.netAmount} onChange={(e) => setForm({ ...form, netAmount: e.target.value })} /></label>
