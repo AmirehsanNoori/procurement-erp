@@ -9,6 +9,7 @@ import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { ExcelButton } from '../components/ExcelButton';
 import { EntityAttachments } from '../components/EntityAttachments';
+import { EntityTimeline } from '../components/EntityTimeline';
 
 const STATUS_COLORS: Record<string, string> = {
   'در انتظار سفارش': 'bg-amber-100 text-amber-700',
@@ -302,6 +303,11 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
               <div className="sm:col-span-2">
                 <span className="mb-1 block text-xs font-bold text-slate-600">📎 فایل‌ها</span>
                 <EntityAttachments entityType="quotation" entityId={editQuot?.id ?? null} />
+              </div>
+
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-xs font-bold text-slate-600">📜 تاریخچه</span>
+                <EntityTimeline entityType="quotation" entityId={editQuot?.id ?? null} />
               </div>
 
               <div className="sm:col-span-2 flex gap-2 pt-1">

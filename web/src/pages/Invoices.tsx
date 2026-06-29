@@ -10,6 +10,7 @@ import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { ExcelButton } from '../components/ExcelButton';
 import { EntityAttachments } from '../components/EntityAttachments';
+import { EntityTimeline } from '../components/EntityTimeline';
 
 interface Invoice {
   id: string; invoiceNumber: string; status: string; totalAmount: string; dueDate: string | null;
@@ -513,6 +514,12 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
                     <div>
                       <h3 className="text-xs font-bold text-slate-600 mb-2">📎 فایل‌ها</h3>
                       <EntityAttachments entityType="invoice" entityId={d.id} />
+                    </div>
+
+                    {/* Timeline */}
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-600 mb-2">📜 تاریخچه</h3>
+                      <EntityTimeline entityType="invoice" entityId={d.id} />
                     </div>
 
                     {/* Installments */}
