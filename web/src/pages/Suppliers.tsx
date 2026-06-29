@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
+import { ExcelButton } from '../components/ExcelButton';
 
 interface SupplierContact { id: string; fullName: string; role: string | null; phone: string | null; email: string | null; notes: string | null; isPrimary: boolean; }
 interface SupplierInteraction { id: string; type: string; subject: string | null; body: string | null; interactionDate: string | null; followUpDate: string | null; createdAt: string; }
@@ -159,7 +160,10 @@ export function Suppliers() {
     <Layout title={t('suppliers.title')}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <input className="input max-w-xs" placeholder={t('suppliers.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
-        {can('suppliers.create') && <button className="btn btn-primary" onClick={add}>{t('suppliers.addNew')}</button>}
+        <div className="flex items-center gap-2">
+          <ExcelButton store="suppliers" />
+          {can('suppliers.create') && <button className="btn btn-primary" onClick={add}>{t('suppliers.addNew')}</button>}
+        </div>
       </div>
 
       {open && (

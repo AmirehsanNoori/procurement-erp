@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate } from '../lib/format';
+import { ExcelButton } from '../components/ExcelButton';
 
 interface ImportResult {
   ok: boolean;
@@ -223,6 +224,17 @@ export function ImportExport() {
           </div>
         </div>
       )}
+
+      {/* Per-store Excel export */}
+      <div className="card mt-4">
+        <h2 className="text-sm font-bold text-slate-700 mb-1">📊 خروجی Excel هر بخش</h2>
+        <p className="text-xs text-slate-500 mb-3">هر بخش را جداگانه با تاریخ شمسی به فایل Excel خروجی بگیرید.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {([['requests', 'درخواست‌ها'], ['quotations', 'پیش‌فاکتورها'], ['invoices', 'فاکتورها'], ['payments', 'پرداخت‌ها'], ['suppliers', 'تأمین‌کنندگان'], ['tasks', 'وظایف']] as const).map(([store, label]) => (
+            <ExcelButton key={store} store={store} label={label} />
+          ))}
+        </div>
+      </div>
 
       {/* Danger zone — clear all data */}
       <div className="card mt-4 border-rose-200">

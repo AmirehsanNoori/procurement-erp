@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
+import { ExcelButton } from '../components/ExcelButton';
 
 interface Task {
   id: string;
@@ -185,6 +186,7 @@ export function Tasks() {
           <option value="1">{t('tasks.priorities.low')}</option>
         </select>
         <div className="flex-1" />
+        <ExcelButton store="tasks" />
         <button className="btn btn-primary" onClick={openCreate}>
           {t('tasks.addNew')}
         </button>

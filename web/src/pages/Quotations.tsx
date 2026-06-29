@@ -7,6 +7,7 @@ import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
+import { ExcelButton } from '../components/ExcelButton';
 
 const STATUS_COLORS: Record<string, string> = {
   'در انتظار سفارش': 'bg-amber-100 text-amber-700',
@@ -38,6 +39,45 @@ const emptyForm = {
 
 type FormState = typeof emptyForm;
 
+interface ConvInst { amount: string; monthKey: string; dueDate: string }
+interface ConvertState {
+  q: Quotation;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  netAmount: string;
+  vatAmount: string;
+  budgetId: string;
+  // accounting
+  sentToAccounting: boolean;
+  accountingSubmissionDate: string;
+  accountingReference: string;
+  batch: string;
+  // follow-up + notes
+  followUpDate: string;
+  notes: string;
+  installments: ConvInst[];
+}
+
+function emptyConvert(q: Quotation): ConvertState {
+  return {
+    q,
+    invoiceNumber: '',
+    invoiceDate: '',
+    dueDate: '',
+    netAmount: String(q.amount),
+    vatAmount: '0',
+    budgetId: q.budget?.id ?? '',
+    sentToAccounting: false,
+    accountingSubmissionDate: '',
+    accountingReference: q.accountingReference ?? '',
+    batch: q.paymentBatchNumber ?? '',
+    followUpDate: q.followUpDate ? q.followUpDate.slice(0, 10) : '',
+    notes: q.notes ?? '',
+    installments: [],
+  };
+}
+
 export function Quotations({ archived = false }: { archived?: boolean }) {
   const { t } = useTranslation();
   const { currentTenantId, can } = useAuth();
@@ -49,7 +89,7 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   const [editQuot, setEditQuot] = useState<Quotation | null>(null);
   const [form, setForm] = useState<FormState>({ ...emptyForm });
   const [err, setErr] = useState('');
-  const [convert, setConvert] = useState<{ q: Quotation; invoiceNumber: string; dueDate: string; netAmount: string; vatAmount: string; budgetId: string } | null>(null);
+  const [convert, setConvert] = useState<ConvertState | null>(null);
   const [convErr, setConvErr] = useState('');
 
   const listKey = ['quotations', tid, archived, search, statusFilter];
@@ -132,13 +172,25 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   });
 
   const convertMut = useMutation({
-    mutationFn: async () => api.post(`/${tid}/quotations/${convert!.q.id}/convert-to-invoice`, {
-      invoiceNumber: convert!.invoiceNumber,
-      dueDate: convert!.dueDate,
-      netAmount: Number(convert!.netAmount || 0),
-      vatAmount: Number(convert!.vatAmount || 0),
-      budgetId: convert!.budgetId || undefined,
-    }),
+    mutationFn: async () => {
+      const c = convert!;
+      const insts = c.installments.filter((i) => Number(i.amount) > 0);
+      return api.post(`/${tid}/quotations/${c.q.id}/convert-to-invoice`, {
+        invoiceNumber: c.invoiceNumber,
+        invoiceDate: c.invoiceDate || undefined,
+        dueDate: c.dueDate,
+        netAmount: Number(c.netAmount || 0),
+        vatAmount: Number(c.vatAmount || 0),
+        budgetId: c.budgetId || undefined,
+        sentToAccounting: c.sentToAccounting,
+        accountingSubmissionDate: c.accountingSubmissionDate || undefined,
+        accountingReference: c.accountingReference || undefined,
+        batch: c.batch || undefined,
+        followUpDate: c.followUpDate || undefined,
+        notes: c.notes || undefined,
+        installments: insts.length ? insts.map((i) => ({ amount: Number(i.amount), monthKey: i.monthKey || undefined, dueDate: i.dueDate || undefined })) : undefined,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['quotations', tid] });
       qc.invalidateQueries({ queryKey: ['invoices', tid] });
@@ -146,6 +198,9 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
     },
     onError: (e) => setConvErr(apiError(e)),
   });
+
+  const convInstTotal = convert ? convert.installments.reduce((s, i) => s + Number(i.amount || 0), 0) : 0;
+  const convGrandTotal = convert ? Number(convert.netAmount || 0) + Number(convert.vatAmount || 0) : 0;
 
   function submit(e: FormEvent) { e.preventDefault(); setErr(''); saveMut.mutate(); }
 
@@ -159,9 +214,12 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
             {['در انتظار سفارش', 'تأیید شده', 'رد شده', 'تبدیل شده', 'بازنده RFQ', 'آرشیو'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        {!archived && can('quotations.create') && (
-          <button className="btn btn-primary" onClick={openCreate}>{t('quotations.addNew')}</button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExcelButton store="quotations" />
+          {!archived && can('quotations.create') && (
+            <button className="btn btn-primary" onClick={openCreate}>{t('quotations.addNew')}</button>
+          )}
+        </div>
       </div>
 
       {/* Create / Edit modal */}
@@ -289,7 +347,7 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
                         <button className="btn btn-outline px-2 py-1" title={t('common.edit')} onClick={() => openEdit(q)}>✏</button>
                       )}
                       {!archived && can('invoices.create') && (
-                        <button className="btn btn-outline px-2 py-1" title={t('quotations.convertToInvoice')} onClick={() => { setConvErr(''); setConvert({ q, invoiceNumber: '', dueDate: '', netAmount: String(q.amount), vatAmount: '0', budgetId: '' }); }}>🔁</button>
+                        <button className="btn btn-outline px-2 py-1" title={t('quotations.convertToInvoice')} onClick={() => { setConvErr(''); setConvert(emptyConvert(q)); }}>🔁</button>
                       )}
                       {!archived && can('quotations.archive') && (
                         <button className="btn btn-outline px-2 py-1 text-amber-600" title={t('common.archive')} onClick={() => { if (confirm(t('quotations.confirmArchive'))) archiveMut.mutate(q.id); }}>🗄</button>
@@ -312,38 +370,112 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
       {/* Convert to invoice modal */}
       {convert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setConvert(null)}>
-          <div className="w-full max-w-md rounded-xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl rounded-xl bg-white p-5 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-base font-bold">{t('quotations.convertToInvoice')}</h2>
             <p className="mb-3 text-xs text-slate-500">{t('quotations.cols.number')} {convert.q.quotationNumber ?? '—'} — {convert.q.supplier?.name}</p>
             {convErr && <div className="mb-2 text-sm text-rose-600">{convErr}</div>}
-            <div className="grid gap-3">
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.invoiceNumber')}</span>
-                <input className="input" dir="ltr" value={convert.invoiceNumber} onChange={(e) => setConvert({ ...convert, invoiceNumber: e.target.value })} />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span>
-                <JDatePicker className="input" value={convert.dueDate} onChange={(v) => setConvert({ ...convert, dueDate: v })} />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
+
+            {/* 1) General */}
+            <div className="rounded-lg border border-slate-200 p-3 mb-3">
+              <div className="mb-2 text-xs font-bold text-slate-700">۱) اطلاعات عمومی</div>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.totalAmount')}</span>
+                  <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.invoiceNumber')}</span>
+                  <input className="input" dir="ltr" value={convert.invoiceNumber} onChange={(e) => setConvert({ ...convert, invoiceNumber: e.target.value })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">تاریخ فاکتور</span>
+                  <JDatePicker className="input" value={convert.invoiceDate} onChange={(v) => setConvert({ ...convert, invoiceDate: v })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span>
+                  <JDatePicker className="input" value={convert.dueDate} onChange={(v) => setConvert({ ...convert, dueDate: v })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.budgetId')}</span>
+                  <SearchableSelect
+                    value={convert.budgetId}
+                    onChange={(v) => setConvert({ ...convert, budgetId: v })}
+                    placeholder="—"
+                    options={[{ value: '', label: '—' }, ...budgetOpts.map((b) => ({ value: b.id, label: b.label }))]}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">مبلغ خالص</span>
                   <input className="input" type="number" value={convert.netAmount} onChange={(e) => setConvert({ ...convert, netAmount: e.target.value })} />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-xs font-bold text-slate-600">مالیات</span>
+                  <span className="mb-1 block text-xs font-bold text-slate-600">مالیات (VAT)</span>
                   <input className="input" type="number" value={convert.vatAmount} onChange={(e) => setConvert({ ...convert, vatAmount: e.target.value })} />
                 </label>
               </div>
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.budgetId')}</span>
-                <select className="input" value={convert.budgetId} onChange={(e) => setConvert({ ...convert, budgetId: e.target.value })}>
-                  <option value="">— ({t('quotations.title')})</option>
-                  {budgetOpts.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-                </select>
-              </label>
+              <div className="mt-2 text-xs text-slate-600">جمع کل: <b className="text-slate-800">{faMoney(convGrandTotal)}</b></div>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+
+            {/* 2) Accounting */}
+            <div className="rounded-lg border border-slate-200 p-3 mb-3">
+              <div className="mb-2 text-xs font-bold text-slate-700">۲) اطلاعات حسابداری</div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">ارسال به حسابداری</span>
+                  <select className="input" value={convert.sentToAccounting ? 'yes' : ''} onChange={(e) => setConvert({ ...convert, sentToAccounting: e.target.value === 'yes' })}>
+                    <option value="">خیر</option>
+                    <option value="yes">بله</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">تاریخ ارسال</span>
+                  <JDatePicker className="input" value={convert.accountingSubmissionDate} onChange={(v) => setConvert({ ...convert, accountingSubmissionDate: v })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">رفرنس حسابداری</span>
+                  <input className="input" dir="ltr" value={convert.accountingReference} onChange={(e) => setConvert({ ...convert, accountingReference: e.target.value })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-slate-600">دسته پرداخت (APAY)</span>
+                  <input className="input" dir="ltr" value={convert.batch} onChange={(e) => setConvert({ ...convert, batch: e.target.value })} />
+                </label>
+              </div>
+            </div>
+
+            {/* 3) Follow-up & installments */}
+            <div className="rounded-lg border border-slate-200 p-3 mb-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">۳) پیگیری و اقساط</span>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setConvert({ ...convert, installments: [...convert.installments, { amount: '', monthKey: '', dueDate: '' }] })}>＋ قسط</button>
+              </div>
+              <label className="block mb-2">
+                <span className="mb-1 block text-xs font-bold text-slate-600">تاریخ پیگیری</span>
+                <JDatePicker className="input" value={convert.followUpDate} onChange={(v) => setConvert({ ...convert, followUpDate: v })} />
+              </label>
+              {convert.installments.map((inst, idx) => (
+                <div key={idx} className="mb-2 flex items-end gap-2">
+                  <label className="block flex-1">
+                    <span className="mb-1 block text-[10px] text-slate-500">مبلغ</span>
+                    <input className="input" type="number" value={inst.amount} onChange={(e) => setConvert({ ...convert, installments: convert.installments.map((r, i) => i === idx ? { ...r, amount: e.target.value } : r) })} />
+                  </label>
+                  <label className="block w-32">
+                    <span className="mb-1 block text-[10px] text-slate-500">ماه (1404/01)</span>
+                    <input className="input" dir="ltr" value={inst.monthKey} onChange={(e) => setConvert({ ...convert, installments: convert.installments.map((r, i) => i === idx ? { ...r, monthKey: e.target.value } : r) })} />
+                  </label>
+                  <label className="block w-36">
+                    <span className="mb-1 block text-[10px] text-slate-500">سررسید</span>
+                    <JDatePicker className="input" value={inst.dueDate} onChange={(v) => setConvert({ ...convert, installments: convert.installments.map((r, i) => i === idx ? { ...r, dueDate: v } : r) })} />
+                  </label>
+                  <button type="button" className="btn btn-outline px-2 py-1 text-rose-600" onClick={() => setConvert({ ...convert, installments: convert.installments.filter((_, i) => i !== idx) })}>🗑</button>
+                </div>
+              ))}
+              {convert.installments.length > 0 && Math.abs(convInstTotal - convGrandTotal) > 1 && (
+                <div className="text-xs text-rose-600">⚠️ مجموع اقساط ({faMoney(convInstTotal)}) با جمع فاکتور ({faMoney(convGrandTotal)}) برابر نیست.</div>
+              )}
+            </div>
+
+            <label className="block mb-3">
+              <span className="mb-1 block text-xs font-bold text-slate-600">یادداشت</span>
+              <textarea className="input min-h-[50px]" value={convert.notes} onChange={(e) => setConvert({ ...convert, notes: e.target.value })} />
+            </label>
+
+            <div className="mt-2 flex justify-end gap-2">
               <button className="btn btn-outline" onClick={() => setConvert(null)}>{t('common.cancel')}</button>
               <button className="btn btn-primary" disabled={!convert.invoiceNumber || !convert.dueDate || convertMut.isPending} onClick={() => convertMut.mutate()}>{t('quotations.convertToInvoice')}</button>
             </div>

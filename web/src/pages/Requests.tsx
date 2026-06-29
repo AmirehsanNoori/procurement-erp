@@ -8,6 +8,7 @@ import { faDate, faMoney } from '../lib/format';
 import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
+import { ExcelButton } from '../components/ExcelButton';
 
 const STATUS_COLORS: Record<string, string> = {
   'جدید': 'bg-blue-100 text-blue-700',
@@ -279,6 +280,7 @@ export function Requests({ archived = false }: { archived?: boolean }) {
               >{t('requests.viewKanban', '⊞ کانبان')}</button>
             </div>
           )}
+          <ExcelButton store="requests" />
           {!archived && can('requests.create') && (
             <button className="btn btn-primary" onClick={openCreate}>{t('requests.addNew')}</button>
           )}

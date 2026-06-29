@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faMoney, faDate } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
+import { ExcelButton } from '../components/ExcelButton';
 
 interface PayRow {
   id: string; type: 'invoice' | 'advance'; date: string | null; amount: number;
@@ -114,9 +115,12 @@ export function Payments() {
         {(from || to) && (
           <button className="btn btn-outline px-2 py-1 text-xs" onClick={() => { setFrom(''); setTo(''); }}>{t('payments.clearFilter')}</button>
         )}
-        {payments.length > 0 && (
-          <button className="btn btn-outline px-2 py-1 text-xs mr-auto" onClick={exportCsv}>{t('payments.exportCsv')}</button>
-        )}
+        <div className="mr-auto flex items-center gap-2">
+          <ExcelButton store="payments" />
+          {payments.length > 0 && (
+            <button className="btn btn-outline px-2 py-1 text-xs" onClick={exportCsv}>{t('payments.exportCsv')}</button>
+          )}
+        </div>
       </div>
 
       {totals && (

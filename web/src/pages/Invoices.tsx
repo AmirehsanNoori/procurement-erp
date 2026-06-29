@@ -8,6 +8,7 @@ import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
+import { ExcelButton } from '../components/ExcelButton';
 
 interface Invoice {
   id: string; invoiceNumber: string; status: string; totalAmount: string; dueDate: string | null;
@@ -295,6 +296,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <input className="input max-w-xs" placeholder={t('invoices.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
         <div className="flex gap-2">
+          <ExcelButton store="invoices" />
           <button className="btn btn-outline text-xs" onClick={exportCsv} title={t('invoices.exportCsv')}>{t('invoices.exportCsv')}</button>
           {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
         </div>

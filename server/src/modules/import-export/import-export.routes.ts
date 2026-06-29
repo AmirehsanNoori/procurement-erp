@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
+import * as XLSX from 'xlsx';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
 import { requirePermission } from '../../middleware/requirePermission';
+import { jalaliStr } from '../../lib/jalali';
 
 const router = Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -64,6 +66,135 @@ router.get(
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(json);
+  })
+);
+
+// ── GET /api/:tenantId/import-export/excel/:store ─────────────────────────────
+// Per-store Excel (.xlsx) export with Persian headers and Jalali dates, mirroring
+// the prototype's exportExcelStore. Supported stores: requests, quotations,
+// invoices, payments, suppliers, tasks.
+const EXCEL_STORES = ['requests', 'quotations', 'invoices', 'payments', 'suppliers', 'tasks'] as const;
+type ExcelStore = (typeof EXCEL_STORES)[number];
+
+async function buildExcelRows(tenantId: string, store: ExcelStore): Promise<Record<string, unknown>[]> {
+  switch (store) {
+    case 'requests': {
+      const rows = await prisma.request.findMany({ where: { tenantId }, include: { supplier: true, assignee: { select: { fullName: true } } }, orderBy: { createdAt: 'desc' } });
+      return rows.map((r) => ({
+        'شماره PQ': r.requestNumber,
+        'عنوان': r.title ?? '',
+        'شرح': r.description ?? '',
+        'دسته': r.category ?? '',
+        'تاریخ درخواست': jalaliStr(r.requestDate),
+        'مبلغ تخمینی': r.estimatedAmount != null ? Number(r.estimatedAmount) : '',
+        'تأمین‌کننده': r.supplier?.name ?? '',
+        'مسئول': r.assignee?.fullName ?? '',
+        'وضعیت': r.status,
+        'تاریخ پیگیری': jalaliStr(r.followUpDate),
+        'تاریخ تحویل': jalaliStr(r.deliveryDate),
+        'آرشیو': r.archived ? 'بله' : 'خیر',
+      }));
+    }
+    case 'quotations': {
+      const rows = await prisma.quotation.findMany({ where: { tenantId }, include: { supplier: true, request: true, budget: true }, orderBy: { createdAt: 'desc' } });
+      return rows.map((q) => ({
+        'شماره پیش‌فاکتور': q.quotationNumber ?? '',
+        'تأمین‌کننده': q.supplier?.name ?? '',
+        'شماره PQ': q.request?.requestNumber ?? '',
+        'تاریخ': jalaliStr(q.date),
+        'مبلغ': q.amount != null ? Number(q.amount) : '',
+        'ارز': q.currency,
+        'پیش‌پرداخت': q.advancePaymentAmount != null ? Number(q.advancePaymentAmount) : '',
+        'وضعیت': q.status,
+        'بودجه': q.budget?.name ?? '',
+        'دسته پرداخت': q.paymentBatchNumber ?? '',
+        'تاریخ پیگیری': jalaliStr(q.followUpDate),
+        'تاریخ تحویل': jalaliStr(q.deliveryDate),
+        'آرشیو': q.archived ? 'بله' : 'خیر',
+      }));
+    }
+    case 'invoices': {
+      const rows = await prisma.invoice.findMany({ where: { tenantId }, include: { supplier: true, request: true, budget: true }, orderBy: { createdAt: 'desc' } });
+      return rows.map((i) => ({
+        'شماره فاکتور': i.invoiceNumber,
+        'شماره PQ': i.request?.requestNumber ?? '',
+        'تأمین‌کننده': i.supplier?.name ?? '',
+        'تاریخ فاکتور': jalaliStr(i.invoiceDate),
+        'سررسید': jalaliStr(i.dueDate),
+        'مبلغ خالص': i.netAmount != null ? Number(i.netAmount) : '',
+        'مالیات': i.vatAmount != null ? Number(i.vatAmount) : '',
+        'جمع کل': Number(i.totalAmount),
+        'وضعیت': i.status,
+        'بودجه': i.budget?.name ?? '',
+        'دسته پرداخت': i.batch ?? '',
+        'رفرنس حسابداری': i.accountingReference ?? '',
+        'آرشیو': i.archived ? 'بله' : 'خیر',
+      }));
+    }
+    case 'payments': {
+      const rows = await prisma.payment.findMany({ where: { tenantId }, include: { invoice: { include: { supplier: true } } }, orderBy: { paymentDate: 'desc' } });
+      return rows.map((p) => ({
+        'تاریخ پرداخت': jalaliStr(p.paymentDate),
+        'شماره فاکتور': p.invoice?.invoiceNumber ?? '',
+        'تأمین‌کننده': p.invoice?.supplier?.name ?? '',
+        'شماره لیست': p.paymentListNumber ?? '',
+        'مبلغ': Number(p.amount),
+        'مرجع': p.reference ?? '',
+        'یادداشت': p.notes ?? '',
+      }));
+    }
+    case 'suppliers': {
+      const rows = await prisma.supplier.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
+      return rows.map((s) => ({
+        'نام': s.name,
+        'شخص تماس': s.contactPerson ?? '',
+        'تلفن': s.phone ?? '',
+        'ایمیل': s.email ?? '',
+        'حساب بانکی': s.bankAccount ?? '',
+        'یادداشت': s.notes ?? '',
+      }));
+    }
+    case 'tasks': {
+      const rows = await prisma.task.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
+      return rows.map((tk) => ({
+        'عنوان': tk.title,
+        'توضیحات': tk.description ?? '',
+        'اولویت': tk.priority,
+        'وضعیت': tk.status,
+        'سررسید': jalaliStr(tk.dueDate),
+        'تاریخ پیگیری': jalaliStr(tk.followUpDate),
+      }));
+    }
+  }
+}
+
+const STORE_LABEL: Record<ExcelStore, string> = {
+  requests: 'درخواست‌ها',
+  quotations: 'پیش‌فاکتورها',
+  invoices: 'فاکتورها',
+  payments: 'پرداخت‌ها',
+  suppliers: 'تأمین‌کنندگان',
+  tasks: 'وظایف',
+};
+
+router.get(
+  '/excel/:store',
+  requirePermission('import_export.view'),
+  asyncHandler(async (req, res) => {
+    const store = req.params.store as ExcelStore;
+    if (!EXCEL_STORES.includes(store)) throw ApiError.badRequest('بخش نامعتبر است');
+    const tenantId = req.tenant!.tenantId;
+
+    const rows = await buildExcelRows(tenantId, store);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ '—': 'بدون داده' }]);
+    XLSX.utils.book_append_sheet(wb, ws, STORE_LABEL[store]);
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+
+    const dateStr = jalaliStr(new Date()).replace(/\//g, '-');
+    res.setHeader('Content-Disposition', `attachment; filename="${store}-${dateStr}.xlsx"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
   })
 );
 
