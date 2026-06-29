@@ -35,7 +35,8 @@ export function Login() {
         <div className="mb-5 text-center">
           <div className="text-3xl">📦</div>
           <h1 className="mt-2 text-lg font-bold">{t('auth.subtitle')}</h1>
-          <p className="text-xs text-slate-400">{t('auth.title')}</p>
+          <p className="text-xs text-slate-400">{t('auth.author')}</p>
+          <p className="text-xs text-slate-400">{t('layout.version')}</p>
         </div>
         {error && (
           <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">

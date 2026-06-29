@@ -89,7 +89,8 @@
   },
   "auth": {
     "title": "ورود به سیستم",
-    "subtitle": "Procurement ERP",
+    "subtitle": "Lumentra Procurement ERP",
+    "author": "By Amirehsan Noori",
     "email": "ایمیل",
     "password": "رمز عبور",
     "loginBtn": "ورود",
@@ -97,8 +98,9 @@
     "error": "ایمیل یا رمز عبور اشتباه است"
   },
   "layout": {
-    "appTitle": "Procurement ERP",
-    "version": "Production v1.0",
+    "appTitle": "Lumentra Procurement ERP",
+    "author": "By Amirehsan Noori",
+    "version": "Production V1.0",
     "menu": "منو",
     "searchHint": "جستجو (Ctrl+K)",
     "notifications": "هشدارها",

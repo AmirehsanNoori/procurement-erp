@@ -67,6 +67,7 @@ function Sidebar({ open, onClose, notifCount }: { open: boolean; onClose: () => 
         <div className="border-b border-white/10 px-4 py-4 text-center">
           <div className="text-2xl">📦</div>
           <h2 className="text-sm font-bold text-white">{t('layout.appTitle')}</h2>
+          <p className="text-[10px] text-sky-300">{t('layout.author')}</p>
           <p className="text-[10px] text-sky-300">{t('layout.version')}</p>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
