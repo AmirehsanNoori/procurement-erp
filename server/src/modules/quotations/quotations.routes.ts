@@ -314,9 +314,13 @@ router.get(
       orderBy: { amount: 'asc' },
     });
 
-    // Lowest-price marker (cheapest quote that isn't rejected/loser/archived).
-    const active = quotations.filter((q) => !['رد شده', 'آرشیو', RFQ_LOSER_STATUS].includes(q.status));
-    const lowestId = active.length > 0 ? active[0].id : null;
+    // A quote "counts" once it has a real amount (invited-only rows have none).
+    const hasQuote = (q: (typeof quotations)[number]) => q.amount != null && Number(q.amount) > 0;
+    // Lowest-price marker among quoted, non-rejected/loser/archived offers.
+    const quoted = quotations.filter((q) => hasQuote(q) && !['رد شده', 'آرشیو', RFQ_LOSER_STATUS].includes(q.status));
+    const lowestId = quoted.length
+      ? quoted.reduce((lo, q) => (Number(q.amount) < Number(lo.amount) ? q : lo)).id
+      : null;
     // A winner is "chosen" when RFQ losers exist; it's the active approved quote.
     const hasLosers = quotations.some((q) => q.status === RFQ_LOSER_STATUS);
     const chosenWinnerId = hasLosers ? (quotations.find((q) => !q.archived && q.status === WINNER_STATUS)?.id ?? null) : null;
@@ -327,7 +331,8 @@ router.get(
       supplier: q.supplier?.name ?? '—',
       supplierId: q.supplierId,
       date: q.date,
-      amount: Number(q.amount),
+      amount: q.amount != null ? Number(q.amount) : 0,
+      hasQuoted: hasQuote(q),
       currency: q.currency,
       status: q.status,
       deliveryDate: q.deliveryDate,

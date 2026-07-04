@@ -164,6 +164,46 @@ router.get(
   })
 );
 
+// POST /api/:tenantId/requests/:id/invite-suppliers
+// Record which suppliers an RFQ was sent to. Each invited supplier becomes a
+// placeholder quotation (status 'دعوت شده', no amount yet) so we can later track
+// who quoted, enter prices, compare and pick a winner — all on the existing
+// Quotation model (no schema change). Does NOT archive the request.
+router.post(
+  '/:id/invite-suppliers',
+  requirePermission('quotations.create'),
+  validate(z.object({ supplierIds: z.array(z.string().min(1)).min(1) })),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const request = await prisma.request.findFirst({ where: { id: req.params.id, tenantId } });
+    if (!request) throw ApiError.notFound('درخواست یافت نشد');
+
+    const { supplierIds } = req.body as { supplierIds: string[] };
+    // Skip suppliers that already have a quotation (invited or real) for this request.
+    const existing = await prisma.quotation.findMany({
+      where: { tenantId, requestId: request.id },
+      select: { supplierId: true },
+    });
+    const already = new Set(existing.map((q) => q.supplierId).filter(Boolean) as string[]);
+    const toAdd = [...new Set(supplierIds)].filter((sid) => !already.has(sid));
+
+    if (toAdd.length) {
+      await prisma.quotation.createMany({
+        data: toAdd.map((supplierId) => ({
+          tenantId,
+          requestId: request.id,
+          supplierId,
+          status: 'دعوت شده',
+          currency: 'ریال',
+          createdById: req.auth!.userId,
+          updatedById: req.auth!.userId,
+        })),
+      });
+    }
+    res.status(201).json({ created: toAdd.length, skipped: supplierIds.length - toAdd.length });
+  })
+);
+
 // POST /api/:tenantId/requests
 router.post(
   '/',

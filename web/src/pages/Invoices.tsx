@@ -18,6 +18,7 @@ interface Invoice {
   supplier: { name: string } | null; budget: { name: string | null } | null; request: { requestNumber: string } | null;
 }
 interface InvoiceDetail extends Invoice {
+  supplierId: string | null; budgetId: string | null; requestId: string | null;
   netAmount: string; vatAmount: string;
   invoiceDate: string | null; followUpDate: string | null;
   sentToAccounting: boolean; accountingReference: string | null;
@@ -59,6 +60,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [form, setForm] = useState({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' });
   const [pay, setPay] = useState<{ inv: Invoice; amount: string; date: string; listNumber: string } | null>(null);
@@ -103,14 +105,40 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   const requestsQ = useQuery({ queryKey: ['requests-opt', tid], queryFn: async () => (await api.get(`/${tid}/requests`, { params: { archived: 'all', limit: 200 } })).data.requests as { id: string; requestNumber: string; description: string | null }[], enabled: Boolean(tid) });
 
   const saveMut = useMutation({
-    mutationFn: async () => api.post(`/${tid}/invoices`, {
-      invoiceNumber: form.invoiceNumber, supplierId: form.supplierId || undefined,
-      budgetId: form.budgetId || undefined, requestId: form.requestId || undefined,
-      dueDate: form.dueDate, netAmount: Number(form.netAmount || 0), vatAmount: Number(form.vatAmount || 0),
-    }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices', tid] }); qc.invalidateQueries({ queryKey: ['budgets', tid] }); setOpen(false); setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' }); },
+    mutationFn: async () => {
+      const payload = {
+        invoiceNumber: form.invoiceNumber, supplierId: form.supplierId || null,
+        // budgetId can be cleared to null when editing (assign / unassign a budget)
+        budgetId: form.budgetId || null, requestId: form.requestId || null,
+        dueDate: form.dueDate || undefined, netAmount: Number(form.netAmount || 0), vatAmount: Number(form.vatAmount || 0),
+      };
+      return editId ? api.patch(`/${tid}/invoices/${editId}`, payload) : api.post(`/${tid}/invoices`, payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices', tid] });
+      qc.invalidateQueries({ queryKey: ['budgets', tid] });
+      if (editId) qc.invalidateQueries({ queryKey: ['invoice-detail', tid, editId] });
+      setOpen(false); setEditId(null);
+      setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' });
+    },
     onError: (e) => setErr(apiError(e)),
   });
+
+  function openEditInvoice(d: InvoiceDetail) {
+    setErr('');
+    setEditId(d.id);
+    setForm({
+      invoiceNumber: d.invoiceNumber,
+      supplierId: d.supplierId ?? '',
+      budgetId: d.budgetId ?? '',
+      requestId: d.requestId ?? '',
+      dueDate: d.dueDate ? d.dueDate.slice(0, 10) : '',
+      netAmount: String(Number(d.netAmount) || 0),
+      vatAmount: String(Number(d.vatAmount) || 0),
+    });
+    setDetailId(null);
+    setOpen(true);
+  }
 
   const delMut = useMutation({
     mutationFn: async (id: string) => api.delete(`/${tid}/invoices/${id}`),
@@ -300,7 +328,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
         <div className="flex gap-2">
           <ExcelButton store="invoices" />
           <button className="btn btn-outline text-xs" onClick={exportCsv} title={t('invoices.exportCsv')}>{t('invoices.exportCsv')}</button>
-          {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
+          {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setEditId(null); setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' }); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
         </div>
       </div>
 
@@ -314,9 +342,10 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
         </div>
       )}
 
-      {/* Create form */}
-      {open && !paidOnly && (
+      {/* Create / edit form */}
+      {open && (!paidOnly || editId) && (
         <form onSubmit={submit} className="card mb-4 grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-3 text-sm font-bold text-slate-700">{editId ? '✏ ویرایش فاکتور' : t('invoices.addNew')}</div>
           {err && <div className="sm:col-span-3 text-sm text-rose-600">{err}</div>}
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.invoiceNumber')}</span><input className="input" value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} required /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.supplierId')}</span>
@@ -346,7 +375,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span><JDatePicker className="input" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.totalAmount')}</span><input className="input" type="number" value={form.netAmount} onChange={(e) => setForm({ ...form, netAmount: e.target.value })} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.vat', 'مالیات')}</span><input className="input" type="number" value={form.vatAmount} onChange={(e) => setForm({ ...form, vatAmount: e.target.value })} /></label>
-          <div className="flex items-end gap-2"><button className="btn btn-primary" disabled={saveMut.isPending}>{t('common.save')}</button><button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>{t('common.cancel')}</button></div>
+          <div className="flex items-end gap-2"><button className="btn btn-primary" disabled={saveMut.isPending}>{t('common.save')}</button><button type="button" className="btn btn-outline" onClick={() => { setOpen(false); setEditId(null); }}>{t('common.cancel')}</button></div>
         </form>
       )}
 
@@ -454,6 +483,11 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
                       <button className="btn btn-outline text-xs px-3 py-1.5" onClick={() => printInvoice(d)} title={t('invoices.detail.printInvoice')}>
                         {t('invoices.detail.printInvoice')}
                       </button>
+                      {can('invoices.edit') && (
+                        <button className="btn btn-outline text-xs px-3 py-1.5" onClick={() => openEditInvoice(d)} title="ویرایش فاکتور و تخصیص بودجه">
+                          ✏ ویرایش فاکتور
+                        </button>
+                      )}
                       {can('invoices.edit') && (
                         <button className="btn btn-outline text-xs px-3 py-1.5" onClick={() => openAcctEdit(d)}>
                           {t('invoices.detail.editAccounting')}

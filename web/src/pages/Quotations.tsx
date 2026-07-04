@@ -18,6 +18,11 @@ const STATUS_COLORS: Record<string, string> = {
   'آرشیو': 'bg-slate-100 text-slate-600',
   'تبدیل شده': 'bg-blue-100 text-blue-700',
   'بازنده RFQ': 'bg-rose-50 text-rose-500',
+  'دعوت شده': 'bg-violet-100 text-violet-700',
+  'سفارش داده شده': 'bg-indigo-100 text-indigo-700',
+  'ارسال شده': 'bg-cyan-100 text-cyan-700',
+  'در انتظار فاکتور': 'bg-orange-100 text-orange-700',
+  'کنسل شده': 'bg-slate-200 text-slate-500',
 };
 
 interface Quotation {
@@ -30,7 +35,7 @@ interface Quotation {
   budget: { id: string; name: string | null; monthJalali: number; yearJalali: number } | null;
 }
 
-const STATUSES = ['در انتظار سفارش', 'تأیید شده', 'رد شده', 'آرشیو'];
+const STATUSES = ['دعوت شده', 'در انتظار سفارش', 'سفارش داده شده', 'ارسال شده', 'در انتظار فاکتور', 'تأیید شده', 'رد شده', 'کنسل شده', 'آرشیو'];
 
 const emptyForm = {
   quotationNumber: '', supplierId: '', requestId: '', budgetId: '',
@@ -213,7 +218,7 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
           <input className="input max-w-xs" placeholder={t('quotations.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
           <select className="input max-w-[12rem]" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">همه وضعیت‌ها</option>
-            {['در انتظار سفارش', 'تأیید شده', 'رد شده', 'تبدیل شده', 'بازنده RFQ', 'آرشیو'].map((s) => <option key={s} value={s}>{s}</option>)}
+            {['دعوت شده', 'در انتظار سفارش', 'سفارش داده شده', 'ارسال شده', 'در انتظار فاکتور', 'تأیید شده', 'رد شده', 'کنسل شده', 'تبدیل شده', 'بازنده RFQ', 'آرشیو'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">

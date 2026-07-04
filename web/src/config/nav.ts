@@ -30,7 +30,7 @@ export const NAV: NavGroup[] = [
       { key: 'requestArchive', path: '/requests/archive', label: 'آرشیو درخواست‌ها', icon: '🗄️', permission: 'request_archive.view' },
       { key: 'quotations', path: '/quotations', label: 'پیش‌فاکتورهای فعال', icon: '📝', permission: 'quotations.view' },
       { key: 'quotationArchive', path: '/quotations/archive', label: 'آرشیو پیش‌فاکتورها', icon: '🗄️', permission: 'quotation_archive.view' },
-      { key: 'rfqCompare', path: '/rfq-compare', label: 'مقایسه رقابتی RFQ', icon: '⚖️', permission: 'quotations.view' },
+      { key: 'rfqCompare', path: '/rfq-compare', label: 'دعوت و مقایسه تأمین‌کننده (RFQ)', icon: '⚖️', permission: 'quotations.view' },
       { key: 'gantt', path: '/gantt', label: 'گانت فرآیند خرید', icon: '📅', permission: 'requests.view' },
     ],
   },
