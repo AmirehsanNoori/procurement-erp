@@ -25,7 +25,6 @@ import { Analytics } from './pages/Analytics';
 import { Profile } from './pages/Profile';
 import { Tenants } from './pages/Tenants';
 import { Approvals } from './pages/Approvals';
-import { RFQCompare } from './pages/RFQCompare';
 import { Correspondence } from './pages/Correspondence';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
@@ -47,7 +46,6 @@ export default function App() {
         <Route path="/" element={<Guarded permission="dashboard.view"><Dashboard /></Guarded>} />
 
         {/* Requests */}
-        <Route path="/rfq-compare" element={<Guarded permission="quotations.view"><RFQCompare /></Guarded>} />
         <Route path="/requests" element={<Guarded permission="requests.view"><Requests /></Guarded>} />
         <Route path="/requests/archive" element={<Guarded permission="request_archive.view"><Requests archived /></Guarded>} />
 

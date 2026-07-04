@@ -352,4 +352,18 @@ router.get(
   })
 );
 
+// GET /:id — single quotation with relations (used to open the winner's full
+// edit form after selecting it in the RFQ workflow). Declared after /compare so
+// it doesn't capture that path.
+router.get(
+  '/:id',
+  requirePermission('quotations.view'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const quotation = await prisma.quotation.findFirst({ where: { id: req.params.id, tenantId }, include });
+    if (!quotation) throw ApiError.notFound('پیش‌فاکتور یافت نشد');
+    res.json({ quotation });
+  })
+);
+
 export default router;

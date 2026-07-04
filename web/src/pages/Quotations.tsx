@@ -7,6 +7,7 @@ import { api, apiError } from '../lib/api';
 import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
+import { RfqWorkflow } from '../components/RfqWorkflow';
 import { ExcelButton } from '../components/ExcelButton';
 import { EntityAttachments } from '../components/EntityAttachments';
 import { EntityTimeline } from '../components/EntityTimeline';
@@ -93,6 +94,7 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [open, setOpen] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
   const [editQuot, setEditQuot] = useState<Quotation | null>(null);
   const [form, setForm] = useState<FormState>({ ...emptyForm });
   const [err, setErr] = useState('');
@@ -139,6 +141,19 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
     });
     setErr('');
     setOpen(true);
+  }
+
+  // Fetch a quotation by id then open the edit modal — used to complete the
+  // winner's pre-invoice details right after the RFQ workflow picks it.
+  async function openEditById(id: string) {
+    try {
+      const q = (await api.get(`/${tid}/quotations/${id}`)).data.quotation as Quotation;
+      setWorkflowOpen(false);
+      openEdit(q);
+    } catch {
+      // If it can't be fetched, at least drop the user into the list.
+      setWorkflowOpen(false);
+    }
   }
 
   const saveMut = useMutation({
@@ -224,10 +239,26 @@ export function Quotations({ archived = false }: { archived?: boolean }) {
         <div className="flex items-center gap-2">
           <ExcelButton store="quotations" />
           {!archived && can('quotations.create') && (
-            <button className="btn btn-primary" onClick={openCreate}>{t('quotations.addNew')}</button>
+            <>
+              <button className="btn btn-primary" onClick={() => setWorkflowOpen(true)}>＋ پیش‌فاکتور جدید (دعوت و مقایسه)</button>
+              <button className="btn btn-outline" onClick={openCreate} title="افزودن مستقیم یک پیش‌فاکتور بدون فرآیند دعوت">افزودن مستقیم</button>
+            </>
           )}
         </div>
       </div>
+
+      {/* RFQ workflow modal — invite suppliers, enter prices, pick winner */}
+      {workflowOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-10 overflow-y-auto" onClick={() => setWorkflowOpen(false)}>
+          <div className="w-full max-w-4xl rounded-xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-800">ثبت پیش‌فاکتور جدید — دعوت و مقایسه تأمین‌کنندگان</h2>
+              <button className="btn btn-outline px-2 py-1" onClick={() => setWorkflowOpen(false)}>✕</button>
+            </div>
+            <RfqWorkflow onComplete={(winnerId) => openEditById(winnerId)} />
+          </div>
+        </div>
+      )}
 
       {/* Create / Edit modal */}
       {open && (
