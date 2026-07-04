@@ -63,7 +63,9 @@ export function RFQCompare() {
   const requestsQ = useQuery({
     queryKey: ['requests-search', tid, inputVal],
     queryFn: async () => {
-      const res = await api.get(`/${tid}/requests`, { params: { search: inputVal, limit: 20 } });
+      // archived: 'all' so every request (any number/prefix, active or archived)
+      // can be pulled into the invite → quote → compare → winner flow.
+      const res = await api.get(`/${tid}/requests`, { params: { search: inputVal, limit: 20, archived: 'all' } });
       return res.data.requests as { id: string; requestNumber: string; description: string | null }[];
     },
     enabled: !!tid && inputVal.trim().length > 0,
