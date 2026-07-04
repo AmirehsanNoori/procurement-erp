@@ -8,6 +8,7 @@ import { requirePermission } from '../../middleware/requirePermission';
 import { INVOICE_STATUS, loadFinance } from '../finance/calc';
 import { recalcInvoiceStatus } from './service';
 import { parsePagination, buildMeta } from '../../lib/paginate';
+import { searchTerms } from '../../lib/search';
 
 const router = Router({ mergeParams: true });
 
@@ -50,7 +51,7 @@ router.get(
   requirePermission('invoices.view'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
     const category = req.query.category as string | undefined; // unb | wait | paid
     const format = req.query.format as string | undefined;
     const { page, limit } = parsePagination(req.query as Record<string, unknown>);
@@ -59,15 +60,15 @@ router.get(
       tenantId,
       ...(req.query.status ? { status: req.query.status as string } : {}),
       ...(req.query.batch ? { batch: { contains: req.query.batch as string, mode: 'insensitive' } } : {}),
-      ...(search
+      ...(terms.length
         ? {
-            OR: [
-              { invoiceNumber: { contains: search, mode: 'insensitive' } },
-              { supplier: { name: { contains: search, mode: 'insensitive' } } },
-              { request: { requestNumber: { contains: search, mode: 'insensitive' } } },
-              { notes: { contains: search, mode: 'insensitive' } },
-              { accountingReference: { contains: search, mode: 'insensitive' } },
-            ],
+            OR: terms.flatMap((v) => [
+              { invoiceNumber: { contains: v, mode: 'insensitive' } },
+              { supplier: { name: { contains: v, mode: 'insensitive' } } },
+              { request: { requestNumber: { contains: v, mode: 'insensitive' } } },
+              { notes: { contains: v, mode: 'insensitive' } },
+              { accountingReference: { contains: v, mode: 'insensitive' } },
+            ] as Prisma.InvoiceWhereInput[]),
           }
         : {}),
     };

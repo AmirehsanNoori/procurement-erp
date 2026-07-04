@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { parsePagination, paginationSkipTake, buildMeta } from '../../lib/paginate';
+import { searchTerms } from '../../lib/search';
 
 // Mounted at /api/:tenantId/requests behind requireAuth + requireTenant.
 const router = Router({ mergeParams: true });
@@ -53,19 +54,21 @@ router.get(
     const archivedParam = req.query.archived as string | undefined;
     const { page, limit } = parsePagination(req.query as Record<string, unknown>);
 
+    const terms = searchTerms(search);
     const where: Prisma.RequestWhereInput = {
       tenantId,
       ...(archivedParam === 'all' ? {} : { archived: archivedParam === 'true' }),
       ...(status ? { status } : {}),
-      ...(search
+      ...(terms.length
         ? {
-            OR: [
-              { requestNumber: { contains: search, mode: 'insensitive' } },
-              { orderNo: { contains: search, mode: 'insensitive' } },
-              { title: { contains: search, mode: 'insensitive' } },
-              { description: { contains: search, mode: 'insensitive' } },
-              { category: { contains: search, mode: 'insensitive' } },
-            ],
+            // Match any digit-script variant so Latin/Persian/Arabic numbers all find each other.
+            OR: terms.flatMap((v) => [
+              { requestNumber: { contains: v, mode: 'insensitive' } },
+              { orderNo: { contains: v, mode: 'insensitive' } },
+              { title: { contains: v, mode: 'insensitive' } },
+              { description: { contains: v, mode: 'insensitive' } },
+              { category: { contains: v, mode: 'insensitive' } },
+            ] as Prisma.RequestWhereInput[]),
           }
         : {}),
     };

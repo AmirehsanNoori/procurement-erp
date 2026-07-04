@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { INVOICE_STATUS } from '../finance/calc';
@@ -79,18 +80,18 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
     const archived = req.query.archived === 'true';
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
     const where: Prisma.QuotationWhereInput = {
       tenantId,
       archived,
       ...(req.query.status ? { status: req.query.status as string } : {}),
-      ...(search
+      ...(terms.length
         ? {
-            OR: [
-              { quotationNumber: { contains: search, mode: 'insensitive' } },
-              { supplier: { name: { contains: search, mode: 'insensitive' } } },
-              { request: { requestNumber: { contains: search, mode: 'insensitive' } } },
-            ],
+            OR: terms.flatMap((v) => [
+              { quotationNumber: { contains: v, mode: 'insensitive' } },
+              { supplier: { name: { contains: v, mode: 'insensitive' } } },
+              { request: { requestNumber: { contains: v, mode: 'insensitive' } } },
+            ] as Prisma.QuotationWhereInput[]),
           }
         : {}),
     };

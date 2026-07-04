@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 
@@ -28,7 +29,7 @@ router.get(
   requirePermission('tasks.view'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
     const status = req.query.status as string | undefined;
     const priority = req.query.priority ? Number(req.query.priority) : undefined;
     const archived = req.query.archived === 'true';
@@ -38,12 +39,12 @@ router.get(
       archived,
       ...(status ? { status } : {}),
       ...(priority ? { priority } : {}),
-      ...(search
+      ...(terms.length
         ? {
-            OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { description: { contains: search, mode: 'insensitive' } },
-            ],
+            OR: terms.flatMap((v) => [
+              { title: { contains: v, mode: 'insensitive' } },
+              { description: { contains: v, mode: 'insensitive' } },
+            ] as Prisma.TaskWhereInput[]),
           }
         : {}),
     };

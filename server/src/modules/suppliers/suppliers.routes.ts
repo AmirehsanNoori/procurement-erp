@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { loadFinance, num } from '../finance/calc';
@@ -22,17 +23,17 @@ router.get(
   '/',
   requirePermission('suppliers.view'),
   asyncHandler(async (req, res) => {
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
     const where: Prisma.SupplierWhereInput = {
       tenantId: req.tenant!.tenantId,
-      ...(search
+      ...(terms.length
         ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { contactPerson: { contains: search, mode: 'insensitive' } },
-              { phone: { contains: search, mode: 'insensitive' } },
-              { email: { contains: search, mode: 'insensitive' } },
-            ],
+            OR: terms.flatMap((v) => [
+              { name: { contains: v, mode: 'insensitive' } },
+              { contactPerson: { contains: v, mode: 'insensitive' } },
+              { phone: { contains: v, mode: 'insensitive' } },
+              { email: { contains: v, mode: 'insensitive' } },
+            ] as Prisma.SupplierWhereInput[]),
           }
         : {}),
     };

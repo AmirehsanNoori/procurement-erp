@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 
@@ -52,21 +53,21 @@ router.get(
     const tenantId = req.tenant!.tenantId;
     const entityType = req.query.entityType as string | undefined;
     const entityId = req.query.entityId as string | undefined;
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
     const limit = Math.min(Number(req.query.limit ?? 100), 500);
 
     const where: Prisma.TimelineEventWhereInput = {
       tenantId,
       ...(entityType ? { entityType } : {}),
       ...(entityId ? { entityId } : {}),
-      ...(search
+      ...(terms.length
         ? {
-            OR: [
-              { notes: { contains: search, mode: 'insensitive' } },
-              { reference: { contains: search, mode: 'insensitive' } },
-              { supplier: { contains: search, mode: 'insensitive' } },
-              { eventType: { contains: search, mode: 'insensitive' } },
-            ],
+            OR: terms.flatMap((v) => [
+              { notes: { contains: v, mode: 'insensitive' } },
+              { reference: { contains: v, mode: 'insensitive' } },
+              { supplier: { contains: v, mode: 'insensitive' } },
+              { eventType: { contains: v, mode: 'insensitive' } },
+            ] as Prisma.TimelineEventWhereInput[]),
           }
         : {}),
     };

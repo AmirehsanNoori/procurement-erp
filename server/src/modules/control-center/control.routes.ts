@@ -2,8 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 
@@ -52,20 +54,20 @@ router.get(
   requirePermission('control_center.view'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
 
     const requests = await prisma.request.findMany({
       where: {
         tenantId,
         archived: false,
-        ...(search
+        ...(terms.length
           ? {
-              OR: [
-                { requestNumber: { contains: search, mode: 'insensitive' } },
-                { orderNo: { contains: search, mode: 'insensitive' } },
-                { title: { contains: search, mode: 'insensitive' } },
-                { category: { contains: search, mode: 'insensitive' } },
-              ],
+              OR: terms.flatMap((v) => [
+                { requestNumber: { contains: v, mode: 'insensitive' } },
+                { orderNo: { contains: v, mode: 'insensitive' } },
+                { title: { contains: v, mode: 'insensitive' } },
+                { category: { contains: v, mode: 'insensitive' } },
+              ] as Prisma.RequestWhereInput[]),
             }
           : {}),
       },

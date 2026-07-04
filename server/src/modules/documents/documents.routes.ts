@@ -6,6 +6,7 @@ import { z } from 'zod';
 import multer from 'multer';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { requirePermission } from '../../middleware/requirePermission';
 import { env } from '../../config/env';
 
@@ -61,20 +62,20 @@ router.get(
     const tenantId = req.tenant!.tenantId;
     const entityType = req.query.entityType as string | undefined;
     const entityId = req.query.entityId as string | undefined;
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
 
     const docs = await prisma.document.findMany({
       where: {
         tenantId,
         ...(entityType ? { entityType } : {}),
         ...(entityId ? { entityId } : {}),
-        ...(search
+        ...(terms.length
           ? {
-              OR: [
-                { originalFilename: { contains: search, mode: 'insensitive' } },
-                { category: { contains: search, mode: 'insensitive' } },
-                { entityType: { contains: search, mode: 'insensitive' } },
-              ],
+              OR: terms.flatMap((v) => [
+                { originalFilename: { contains: v, mode: 'insensitive' as const } },
+                { category: { contains: v, mode: 'insensitive' as const } },
+                { entityType: { contains: v, mode: 'insensitive' as const } },
+              ]),
             }
           : {}),
       },

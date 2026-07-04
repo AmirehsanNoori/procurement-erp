@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError, asyncHandler } from '../../lib/http';
+import { searchTerms } from '../../lib/search';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 
@@ -31,20 +32,20 @@ const include = { request: { select: { id: true, requestNumber: true } }, invoic
 router.get('/', requirePermission('correspondence.view'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
-    const search = (req.query.search as string | undefined)?.trim();
+    const terms = searchTerms(req.query.search as string | undefined);
     const direction = req.query.direction as string | undefined;
     const status = req.query.status as string | undefined;
     const where: Prisma.CorrespondenceWhereInput = {
       tenantId,
       ...(direction ? { direction } : {}),
       ...(status ? { status } : {}),
-      ...(search ? {
-        OR: [
-          { letterNumber: { contains: search, mode: 'insensitive' } },
-          { subject: { contains: search, mode: 'insensitive' } },
-          { senderName: { contains: search, mode: 'insensitive' } },
-          { recipientName: { contains: search, mode: 'insensitive' } },
-        ],
+      ...(terms.length ? {
+        OR: terms.flatMap((v) => [
+          { letterNumber: { contains: v, mode: 'insensitive' } },
+          { subject: { contains: v, mode: 'insensitive' } },
+          { senderName: { contains: v, mode: 'insensitive' } },
+          { recipientName: { contains: v, mode: 'insensitive' } },
+        ] as Prisma.CorrespondenceWhereInput[]),
       } : {}),
     };
     const letters = await prisma.correspondence.findMany({ where, include, orderBy: { createdAt: 'desc' } });
