@@ -8,6 +8,7 @@ import { faMoney, faDate, JMONTHS } from '../lib/format';
 import { Pagination } from '../components/Pagination';
 import { JDatePicker } from '../components/JDatePicker';
 import { SearchableSelect } from '../components/SearchableSelect';
+import { RequestSearchSelect } from '../components/RequestSearchSelect';
 import { ExcelButton } from '../components/ExcelButton';
 import { EntityAttachments } from '../components/EntityAttachments';
 import { EntityTimeline } from '../components/EntityTimeline';
@@ -61,6 +62,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [editReqLabel, setEditReqLabel] = useState('');
   const [err, setErr] = useState('');
   const [form, setForm] = useState({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' });
   const [pay, setPay] = useState<{ inv: Invoice; amount: string; date: string; listNumber: string } | null>(null);
@@ -102,7 +104,6 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
 
   const suppliersQ = useQuery({ queryKey: ['suppliers-opt', tid], queryFn: async () => (await api.get(`/${tid}/suppliers`)).data.suppliers as { id: string; name: string }[], enabled: Boolean(tid) });
   const budgetsQ = useQuery({ queryKey: ['budgets-opt', tid], queryFn: async () => (await api.get(`/${tid}/budgets`)).data.budgets as { id: string; name: string | null; monthJalali: number; yearJalali: number }[], enabled: Boolean(tid) });
-  const requestsQ = useQuery({ queryKey: ['requests-opt', tid], queryFn: async () => (await api.get(`/${tid}/requests`, { params: { archived: 'all', limit: 200 } })).data.requests as { id: string; requestNumber: string; description: string | null }[], enabled: Boolean(tid) });
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -127,6 +128,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   function openEditInvoice(d: InvoiceDetail) {
     setErr('');
     setEditId(d.id);
+    setEditReqLabel(d.request?.requestNumber ?? '');
     setForm({
       invoiceNumber: d.invoiceNumber,
       supplierId: d.supplierId ?? '',
@@ -328,7 +330,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
         <div className="flex gap-2">
           <ExcelButton store="invoices" />
           <button className="btn btn-outline text-xs" onClick={exportCsv} title={t('invoices.exportCsv')}>{t('invoices.exportCsv')}</button>
-          {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setEditId(null); setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' }); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
+          {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setEditId(null); setEditReqLabel(''); setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' }); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
         </div>
       </div>
 
@@ -357,11 +359,10 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
             />
           </label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.cols.number')}</span>
-            <SearchableSelect
+            <RequestSearchSelect
               value={form.requestId}
-              onChange={(v) => setForm({ ...form, requestId: v })}
-              placeholder="—"
-              options={[{ value: '', label: '—' }, ...(requestsQ.data ?? []).map((r) => ({ value: r.id, label: `${r.requestNumber}${r.description ? ' — ' + r.description : ''}` }))]}
+              initialLabel={editReqLabel}
+              onChange={(id) => setForm({ ...form, requestId: id })}
             />
           </label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.budgetId')}</span>
