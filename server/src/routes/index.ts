@@ -2,12 +2,12 @@ import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
 import tenantRoutes from '../modules/tenants/tenants.routes';
 import userRoutes from '../modules/users/users.routes';
-import requestRoutes from '../modules/requests/requests.routes';
+import { requestsModule } from '../modules/requests/requests.module';
 import { suppliersModule } from '../modules/suppliers/suppliers.module';
-import budgetRoutes from '../modules/budgets/budgets.routes';
-import quotationRoutes from '../modules/quotations/quotations.routes';
-import invoiceRoutes from '../modules/invoices/invoices.routes';
-import paymentRoutes from '../modules/payments/payments.routes';
+import { budgetsModule } from '../modules/budgets/budgets.module';
+import { quotationsModule } from '../modules/quotations/quotations.module';
+import { invoicesModule } from '../modules/invoices/invoices.module';
+import { paymentsModule } from '../modules/payments/payments.module';
 import controlCenterRoutes from '../modules/control-center/control.routes';
 import documentRoutes from '../modules/documents/documents.routes';
 import dashboardRoutes from '../modules/dashboard/dashboard.routes';
@@ -52,13 +52,14 @@ const legacy = (key: string, title: string, basePath: string, r: Router): ApiMod
   register: () => ({ router: r }),
 });
 
-registry.register(legacy('requests', 'Requests', 'requests', requestRoutes));
-// Suppliers is a real ApiModule (M4 template); the rest are still legacy adapters.
+// Procurement procure-to-pay sub-modules are real ApiModules (M4). Remaining
+// tenant modules are still legacy adapters until their own migration.
+registry.register(requestsModule);
 registry.register(suppliersModule);
-registry.register(legacy('budgets', 'Budgets', 'budgets', budgetRoutes));
-registry.register(legacy('quotations', 'Quotations', 'quotations', quotationRoutes));
-registry.register(legacy('invoices', 'Invoices', 'invoices', invoiceRoutes));
-registry.register(legacy('payments', 'Payments', 'payments', paymentRoutes));
+registry.register(budgetsModule);
+registry.register(quotationsModule);
+registry.register(invoicesModule);
+registry.register(paymentsModule);
 registry.register(legacy('control-center', 'Control Center', 'control-center', controlCenterRoutes));
 registry.register(legacy('documents', 'Documents', 'documents', documentRoutes));
 registry.register(legacy('dashboard', 'Dashboard', 'dashboard', dashboardRoutes));
