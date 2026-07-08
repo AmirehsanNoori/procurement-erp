@@ -7,6 +7,10 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+# ...except the compiled Core runtime, which is shipped so Node/Vercel can load
+# @lumentra/core-runtime at runtime without a build step (it's a TS-source pkg).
+!core/runtime/dist/
+!core/runtime/dist/**
 
 # Env
 .env
