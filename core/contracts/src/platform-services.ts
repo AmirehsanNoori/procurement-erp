@@ -4,7 +4,7 @@
  * polymorphic (keyed by SoftRef) so they work for any module without change
  * (ADR-0006).
  */
-import type { SoftRef, TenantId, UserId, Paginated } from './primitives.ts';
+import type { SoftRef, TenantId, UserId, Paginated } from './primitives';
 
 // ── Audit ──────────────────────────────────────────────────────────────────
 export interface AuditEntryInput {

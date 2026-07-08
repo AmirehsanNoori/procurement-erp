@@ -2,8 +2,8 @@
  * Identity & request context contracts. Core resolves these once per request
  * (auth + tenant gate) and hands an immutable context to the module handler.
  */
-import type { PermissionKey } from './rbac.ts';
-import type { TenantId, UserId } from './primitives.ts';
+import type { PermissionKey } from './rbac';
+import type { TenantId, UserId } from './primitives';
 
 /** The authenticated actor (never trust client-supplied identity). */
 export interface Principal {

@@ -4,8 +4,8 @@
  * executive rollups and AI summaries uniformly. No module builds its own
  * reporting engine (ADR-0007).
  */
-import type { RequestContext } from './identity.ts';
-import type { Paginated } from './primitives.ts';
+import type { RequestContext } from './identity';
+import type { Paginated } from './primitives';
 
 export type FilterKind = 'text' | 'number' | 'date' | 'jalali-date' | 'select' | 'boolean' | 'ref';
 export interface ReportFilterSpec {

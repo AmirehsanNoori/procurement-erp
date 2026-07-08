@@ -5,20 +5,20 @@
  * file (route table, nav array, permission catalog) is edited by hand
  * (ADR-0002).
  */
-import type { AuthorizationService, ModuleActions, RoleDefaults } from './rbac.ts';
-import type { RequestContext } from './identity.ts';
-import type { EventBus, EventHandler } from './events.ts';
-import type { ApprovalEngine, WorkflowEngine } from './workflow.ts';
+import type { AuthorizationService, ModuleActions, RoleDefaults } from './rbac';
+import type { RequestContext } from './identity';
+import type { EventBus, EventHandler } from './events';
+import type { ApprovalEngine, WorkflowEngine } from './workflow';
 import type {
   AuditService,
   DocumentService,
   NotificationService,
   StorageProvider,
   TimelineService,
-} from './platform-services.ts';
-import type { ReportDescriptor, ReportRegistry } from './reporting.ts';
-import type { AICapability, AIRegistry, SearchProvider } from './ai.ts';
-import type { Logger } from './primitives.ts';
+} from './platform-services';
+import type { ReportDescriptor, ReportRegistry } from './reporting';
+import type { AICapability, AIRegistry, SearchProvider } from './ai';
+import type { Logger } from './primitives';
 
 /**
  * The bag of Core singletons injected into a module at registration time.

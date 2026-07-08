@@ -2,7 +2,7 @@
  * RBAC + module entitlement contracts. Core owns identity/roles/permissions;
  * modules only DECLARE the permissions they need (see ADR-0004).
  */
-import type { TenantId } from './primitives.ts';
+import type { TenantId } from './primitives';
 
 /** Permission key in the canonical "<module>.<action>" form, e.g. "requests.create". */
 export type PermissionKey = string;

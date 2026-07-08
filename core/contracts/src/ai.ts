@@ -6,8 +6,8 @@
  * default; any write capability must be explicitly flagged and permission-gated
  * and still flows through the module's normal authorization + audit (ADR-0008).
  */
-import type { RequestContext } from './identity.ts';
-import type { SoftRef } from './primitives.ts';
+import type { RequestContext } from './identity';
+import type { SoftRef } from './primitives';
 
 /** JSON-schema-ish description of a capability's input (kept structural/minimal). */
 export interface CapabilityParam {

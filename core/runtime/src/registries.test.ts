@@ -3,8 +3,8 @@ import {
   DefaultAIRegistry,
   DefaultApiModuleRegistry,
   DefaultReportRegistry,
-} from './registries.ts';
-import { apiModule, capability, ctx, report, searchProvider } from './_testkit.ts';
+} from './registries';
+import { apiModule, capability, ctx, report, searchProvider } from './_testkit';
 
 describe('DefaultApiModuleRegistry', () => {
   it('registers and lists modules', () => {

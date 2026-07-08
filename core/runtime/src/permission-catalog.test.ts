@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { aggregateCatalog, expandModuleActions } from './permission-catalog.ts';
-import { apiModule } from './_testkit.ts';
+import { aggregateCatalog, expandModuleActions } from './permission-catalog';
+import { apiModule } from './_testkit';
 
 describe('expandModuleActions', () => {
   it('expands sub-module action verbs into "<sub>.<action>" keys', () => {

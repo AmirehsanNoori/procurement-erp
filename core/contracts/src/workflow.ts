@@ -4,7 +4,7 @@
  * HR leave requests…) uses one engine instead of re-implementing approvals.
  * Modules attach a workflow to any of their entities via a SoftRef (ADR-0005).
  */
-import type { SoftRef, TenantId, UserId } from './primitives.ts';
+import type { SoftRef, TenantId, UserId } from './primitives';
 
 export type StepMode = 'all' | 'any' | 'quorum';
 

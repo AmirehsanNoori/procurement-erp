@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { DomainEvent } from '@lumentra/core-contracts';
-import { InProcessEventBus } from './event-bus.ts';
+import { InProcessEventBus } from './event-bus';
 
 function evt(name: string): DomainEvent {
   return { name, tenantId: 't1', payload: {}, occurredAt: new Date().toISOString(), actor: 'system' };

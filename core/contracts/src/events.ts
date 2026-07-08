@@ -4,8 +4,8 @@
  * Procurement subscribes to advance a request's status. Core provides the bus;
  * starts in-process, can move to Redis/queue later without changing this API.
  */
-import type { RequestContext } from './identity.ts';
-import type { SoftRef, TenantId } from './primitives.ts';
+import type { RequestContext } from './identity';
+import type { SoftRef, TenantId } from './primitives';
 
 /** A domain event published by a module. Name is "<module>.<event>". */
 export interface DomainEvent<P = unknown> {
