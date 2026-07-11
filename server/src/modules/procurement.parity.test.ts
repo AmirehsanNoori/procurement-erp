@@ -7,6 +7,11 @@ import { budgetsModule } from './budgets/budgets.module';
 import { quotationsModule } from './quotations/quotations.module';
 import { invoicesModule } from './invoices/invoices.module';
 import { paymentsModule } from './payments/payments.module';
+import { controlCenterModule } from './control-center/control-center.module';
+import { correspondenceModule } from './correspondence/correspondence.module';
+import { expensesModule } from './expenses/expenses.module';
+import { dueDatesModule } from './due-dates/due-dates.module';
+import { reportsModule } from './reports/reports.module';
 
 const procurementModules = [
   requestsModule,
@@ -15,6 +20,11 @@ const procurementModules = [
   quotationsModule,
   invoicesModule,
   paymentsModule,
+  controlCenterModule,
+  correspondenceModule,
+  expensesModule,
+  dueDatesModule,
+  reportsModule,
 ];
 
 // Permission sub-modules owned by the migrated Procurement modules.
@@ -28,6 +38,11 @@ const ownedPermModules = [
   'invoices',
   'paid_invoice_archive',
   'payments',
+  'control_center',
+  'correspondence',
+  'expenses',
+  'due_dates',
+  'reports',
 ];
 
 describe('Procurement modules ↔ legacy permission catalog', () => {
