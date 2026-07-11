@@ -24,6 +24,7 @@ import approvalRoutes from '../modules/approvals/approvals.routes';
 import { correspondenceModule } from '../modules/correspondence/correspondence.module';
 import { expensesModule } from '../modules/expenses/expenses.module';
 import billingRoutes from '../modules/billing/billing.routes';
+import adminRoutes from '../modules/admin/admin.routes';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
@@ -38,6 +39,7 @@ router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().t
 router.use('/auth', authRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/users', userRoutes);
+router.use('/admin', adminRoutes);
 
 // Tenant-scoped modules are registered with the Core module registry and mounted
 // beneath the shared auth + tenant gate. Same paths, same order, same behavior —
