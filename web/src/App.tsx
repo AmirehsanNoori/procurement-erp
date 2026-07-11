@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute, RequirePermission } from './components/guards';
 import { Login } from './pages/Login';
+import { Hub } from './pages/Hub';
 import { Dashboard } from './pages/Dashboard';
 import { Requests } from './pages/Requests';
 import { Users } from './pages/Users';
@@ -43,7 +44,9 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Guarded permission="dashboard.view"><Dashboard /></Guarded>} />
+        {/* Central module hub (App Launcher) — the post-login landing. */}
+        <Route path="/" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<Guarded permission="dashboard.view"><Dashboard /></Guarded>} />
 
         {/* Requests */}
         <Route path="/requests" element={<Guarded permission="requests.view"><Requests /></Guarded>} />

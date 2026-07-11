@@ -17,7 +17,8 @@ export const NAV: NavGroup[] = [
     key: 'main',
     title: 'اصلی',
     items: [
-      { key: 'dashboard', path: '/', label: 'داشبورد', icon: '🏠', permission: 'dashboard.view' },
+      { key: 'hub', path: '/', label: 'مرکز ماژول‌ها', icon: '🧭', permission: '' },
+      { key: 'dashboard', path: '/dashboard', label: 'داشبورد', icon: '🏠', permission: 'dashboard.view' },
       { key: 'controlCenter', path: '/control-center', label: 'مرکز کنترل', icon: '🎯', permission: 'control_center.view' },
       { key: 'notifications', path: '/notifications', label: 'مرکز هشدارها', icon: '🔔', permission: 'notification_center.view' },
     ],

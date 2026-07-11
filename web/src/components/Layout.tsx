@@ -50,7 +50,7 @@ function Sidebar({ open, onClose, notifCount }: { open: boolean; onClose: () => 
   const { can } = useAuth();
   const { t, i18n } = useTranslation();
   const isRtl = !i18n.language?.startsWith('en');
-  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => can(i.permission)) })).filter(
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.permission || can(i.permission)) })).filter(
     (g) => g.items.length > 0
   );
 
