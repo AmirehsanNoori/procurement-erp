@@ -1,10 +1,10 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { NavLink, useNavigate, Link } from 'react-router-dom';
+import { NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
-import { NAV } from '../config/nav';
+import { NAV, moduleForPath } from '../config/nav';
 import { GlobalSearch } from './GlobalSearch';
 import { setLang, currentLang } from '../i18n';
 
@@ -49,10 +49,15 @@ function LanguageSwitcher() {
 function Sidebar({ open, onClose, notifCount }: { open: boolean; onClose: () => void; notifCount: number }) {
   const { can } = useAuth();
   const { t, i18n } = useTranslation();
+  const { pathname } = useLocation();
   const isRtl = !i18n.language?.startsWith('en');
-  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.permission || can(i.permission)) })).filter(
-    (g) => g.items.length > 0
-  );
+  // Personalised per-app menu: show only the active module's groups (ADR: the
+  // shell composes nav from the module the user is currently inside).
+  const currentModule = moduleForPath(pathname);
+  const groups = NAV
+    .filter((g) => g.module === currentModule)
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.permission || can(i.permission)) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <>
@@ -71,6 +76,19 @@ function Sidebar({ open, onClose, notifCount }: { open: boolean; onClose: () => 
           <p className="text-[10px] text-sky-300">{t('layout.version')}</p>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
+          <NavLink
+            to="/"
+            end
+            onClick={onClose}
+            className={({ isActive }) =>
+              `mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition ${
+                isActive ? 'bg-white/10 text-white' : 'text-sky-300 hover:bg-white/5 hover:text-white'
+              }`
+            }
+          >
+            <span className="w-4 text-center">🧭</span>
+            <span className="flex-1 font-semibold">مرکز ماژول‌ها</span>
+          </NavLink>
           {groups.map((group) => (
             <div key={group.key ?? group.title}>
               <div className="px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-wide text-sky-500">

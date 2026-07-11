@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
@@ -48,11 +49,32 @@ const MODULES: HubModule[] = [
 ];
 
 export function Hub() {
-  const { can, isModuleEnabled, currentTenantId, tenants } = useAuth();
+  const { can, isModuleEnabled, currentTenantId, tenants, switchTenant } = useAuth();
   const navigate = useNavigate();
+  // Tenant is chosen when entering an app (head-office users work across tenants).
+  const [pendingEntry, setPendingEntry] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
 
   const tenantName = tenants.find((t) => t.tenantId === currentTenantId)?.name ?? '';
   const isAdmin = can('user_management.view');
+
+  function enter(entry: string) {
+    if (tenants.length > 1) setPendingEntry(entry);
+    else navigate(entry);
+  }
+
+  async function chooseTenant(tenantId: string) {
+    if (!pendingEntry) return;
+    setSwitching(true);
+    try {
+      if (tenantId !== currentTenantId) await switchTenant(tenantId);
+      const dest = pendingEntry;
+      setPendingEntry(null);
+      navigate(dest);
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   function entryFor(m: HubModule): string | null {
     if (!m.entries) return null;
@@ -84,7 +106,7 @@ export function Hub() {
             <button
               key={m.key}
               disabled={!enabled}
-              onClick={() => entry && navigate(entry)}
+              onClick={() => entry && enter(entry)}
               className={`group relative flex flex-col items-start gap-3 rounded-2xl border p-5 text-right transition-all ${
                 enabled
                   ? 'border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:shadow-lg cursor-pointer'
@@ -109,7 +131,7 @@ export function Hub() {
 
         {isAdmin && (
           <button
-            onClick={() => navigate('/users')}
+            onClick={() => enter('/users')}
             className="group flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-5 text-right shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-2xl text-white shadow">⚙️</div>
@@ -121,6 +143,34 @@ export function Hub() {
           </button>
         )}
       </div>
+
+      {/* Choose which company to work in for this app (multi-tenant users). */}
+      {pendingEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !switching && setPendingEntry(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-slate-800">انتخاب شرکت</h2>
+            <p className="mt-1 mb-4 text-xs text-slate-500">برای ورود به این بخش، شرکت موردنظر را انتخاب کنید.</p>
+            <div className="space-y-2">
+              {tenants.map((tn) => (
+                <button
+                  key={tn.tenantId}
+                  disabled={switching}
+                  onClick={() => chooseTenant(tn.tenantId)}
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-sm transition hover:bg-slate-50 disabled:opacity-50 ${
+                    tn.tenantId === currentTenantId ? 'border-blue-300 bg-blue-50' : 'border-slate-200'
+                  }`}
+                >
+                  <span className="font-semibold text-slate-700">🏢 {tn.name}</span>
+                  {tn.tenantId === currentTenantId && <span className="text-[10px] text-blue-600">فعلی</span>}
+                </button>
+              ))}
+            </div>
+            <button className="mt-4 w-full rounded-lg border border-slate-200 py-2 text-sm text-slate-500 hover:bg-slate-50" disabled={switching} onClick={() => setPendingEntry(null)}>
+              انصراف
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

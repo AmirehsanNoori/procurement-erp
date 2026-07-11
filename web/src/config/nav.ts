@@ -9,6 +9,9 @@ export interface NavItem {
 export interface NavGroup {
   key: string;
   title: string;
+  /** Which platform module (app) this group belongs to. The shell shows only the
+   *  active module's groups, so each app has its own personalised menu. */
+  module: string;
   items: NavItem[];
 }
 
@@ -16,8 +19,8 @@ export const NAV: NavGroup[] = [
   {
     key: 'main',
     title: 'اصلی',
+    module: 'procurement',
     items: [
-      { key: 'hub', path: '/', label: 'مرکز ماژول‌ها', icon: '🧭', permission: '' },
       { key: 'dashboard', path: '/dashboard', label: 'داشبورد', icon: '🏠', permission: 'dashboard.view' },
       { key: 'controlCenter', path: '/control-center', label: 'مرکز کنترل', icon: '🎯', permission: 'control_center.view' },
       { key: 'notifications', path: '/notifications', label: 'مرکز هشدارها', icon: '🔔', permission: 'notification_center.view' },
@@ -26,6 +29,7 @@ export const NAV: NavGroup[] = [
   {
     key: 'procurement',
     title: 'خرید',
+    module: 'procurement',
     items: [
       { key: 'requests', path: '/requests', label: 'درخواست‌های فعال', icon: '📋', permission: 'requests.view' },
       { key: 'requestArchive', path: '/requests/archive', label: 'آرشیو درخواست‌ها', icon: '🗄️', permission: 'request_archive.view' },
@@ -37,6 +41,7 @@ export const NAV: NavGroup[] = [
   {
     key: 'budget',
     title: 'بودجه',
+    module: 'procurement',
     items: [
       { key: 'budgets', path: '/budget', label: 'بودجه ماهانه و پیش‌بینی', icon: '💰', permission: 'monthly_budget.view' },
     ],
@@ -44,6 +49,7 @@ export const NAV: NavGroup[] = [
   {
     key: 'finance',
     title: 'مالی',
+    module: 'procurement',
     items: [
       { key: 'invoices', path: '/invoices', label: 'فاکتورها', icon: '🧾', permission: 'invoices.view' },
       { key: 'paidArchive', path: '/invoices/paid', label: 'آرشیو پرداخت شده', icon: '✅', permission: 'paid_invoice_archive.view' },
@@ -53,6 +59,7 @@ export const NAV: NavGroup[] = [
   {
     key: 'tasks',
     title: 'وظایف',
+    module: 'procurement',
     items: [
       { key: 'taskList', path: '/tasks', label: 'وظایف و پیگیری', icon: '☑', permission: 'tasks.view' },
       { key: 'correspondence', path: '/correspondence', label: 'مکاتبات اداری', icon: '✉️', permission: 'correspondence.view' },
@@ -63,6 +70,7 @@ export const NAV: NavGroup[] = [
   {
     key: 'reports',
     title: 'گزارش',
+    module: 'procurement',
     items: [
       { key: 'suppliers', path: '/suppliers', label: 'تأمین‌کنندگان', icon: '🏭', permission: 'suppliers.view' },
       { key: 'supplierStatement', path: '/suppliers/statement', label: 'صورت‌حساب تأمین‌کننده', icon: '📊', permission: 'supplier_statement.view' },
@@ -78,6 +86,7 @@ export const NAV: NavGroup[] = [
   {
     key: 'management',
     title: 'مدیریت',
+    module: 'system',
     items: [
       { key: 'approvals', path: '/approvals', label: 'گردش‌کارهای تأیید', icon: '✅', permission: 'approvals.view' },
       { key: 'subscription', path: '/subscription', label: 'اشتراک و پلن', icon: '💎', permission: 'billing.view' },
@@ -87,3 +96,25 @@ export const NAV: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * The module (app) that owns a given route, by longest matching nav path.
+ * Returns null for the Hub ('/'), so the shell shows no module menu there.
+ * Falls back to 'procurement' for any unmapped in-app route.
+ */
+export function moduleForPath(pathname: string): string | null {
+  if (pathname === '/') return null;
+  let match: string | null = null;
+  let matchLen = -1;
+  for (const group of NAV) {
+    for (const item of group.items) {
+      if (item.path === '/') continue;
+      const hit = pathname === item.path || pathname.startsWith(item.path + '/');
+      if (hit && item.path.length > matchLen) {
+        match = group.module;
+        matchLen = item.path.length;
+      }
+    }
+  }
+  return match ?? 'procurement';
+}
