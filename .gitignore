@@ -46,4 +46,7 @@ web/public/sw-*.js
 
 .vercel
 .env*
+# ...except the production web API base (no secrets): Vercel builds have no
+# web/.env, so this pins VITE_API_URL to the same-origin /api for every deploy.
+!web/.env.production
 .github/workflows/
