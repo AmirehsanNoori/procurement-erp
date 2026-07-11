@@ -330,6 +330,7 @@ model Request {
   cost               Decimal?  @db.Decimal(18, 2)
   archived           Boolean   @default(false)
   assigneeId         String?
+  requestingUnit     String? // unit/department that raised the request (warehouse intake)
   createdById        String?
   updatedById        String?
   createdAt          DateTime  @default(now())
@@ -341,12 +342,38 @@ model Request {
   quotations Quotation[]
   invoices         Invoice[]
   correspondences  Correspondence[]
+  items            RequestItem[]
 
   @@unique([tenantId, requestNumber])
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([assigneeId])
   @@map("requests")
+}
+
+/// Line items on a procurement request (warehouse intake detail): category,
+/// description, quantity, unit of measure, optional pricing + tax.
+model RequestItem {
+  id          String   @id @default(cuid())
+  tenantId    String
+  requestId   String
+  category    String?
+  description String
+  quantity    Decimal  @default(1) @db.Decimal(18, 3)
+  unit        String? // unit of measure (عدد، کیلوگرم، ...)
+  unitPrice   Decimal? @db.Decimal(18, 2)
+  lineTotal   Decimal? @db.Decimal(18, 2)
+  taxAmount   Decimal? @db.Decimal(18, 2)
+  notes       String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([requestId])
+  @@map("request_items")
 }
 
 model Quotation {

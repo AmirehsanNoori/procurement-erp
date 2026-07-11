@@ -14,8 +14,56 @@ const router = Router({ mergeParams: true });
 const dateField = z.coerce.date().optional().nullable();
 const numField = z.coerce.number().optional().nullable();
 
+const itemSchema = z.object({
+  category: z.string().optional().nullable(),
+  description: z.string().min(1),
+  quantity: z.coerce.number().default(1),
+  unit: z.string().optional().nullable(),
+  unitPrice: numField,
+  lineTotal: numField,
+  taxAmount: numField,
+  notes: z.string().optional().nullable(),
+});
+type ItemInput = z.infer<typeof itemSchema>;
+
+/**
+ * Replace a request's line items (warehouse intake detail). Fail-open: if the
+ * request_items table isn't present yet (pre-migration), items are skipped so
+ * request create/edit never breaks.
+ */
+async function replaceRequestItems(tenantId: string, requestId: string, items: ItemInput[]) {
+  try {
+    await prisma.$transaction([
+      prisma.requestItem.deleteMany({ where: { requestId, tenantId } }),
+      ...(items.length
+        ? [
+            prisma.requestItem.createMany({
+              data: items.map((it, i) => ({
+                tenantId,
+                requestId,
+                category: it.category ?? null,
+                description: it.description,
+                quantity: it.quantity ?? 1,
+                unit: it.unit ?? null,
+                unitPrice: it.unitPrice ?? null,
+                lineTotal: it.lineTotal ?? (it.unitPrice != null ? (it.quantity ?? 1) * it.unitPrice : null),
+                taxAmount: it.taxAmount ?? null,
+                notes: it.notes ?? null,
+                sortOrder: i,
+              })),
+            }),
+          ]
+        : []),
+    ]);
+  } catch {
+    // request_items table not migrated yet — skip silently.
+  }
+}
+
 const upsertSchema = z.object({
   requestNumber: z.string().min(1),
+  requestingUnit: z.string().optional().nullable(),
+  items: z.array(itemSchema).optional(),
   orderNo: z.string().optional().nullable(),
   title: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
@@ -136,8 +184,9 @@ router.get(
   '/:id',
   requirePermission('requests.view'),
   asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
     const request = await prisma.request.findFirst({
-      where: { id: req.params.id, tenantId: req.tenant!.tenantId },
+      where: { id: req.params.id, tenantId },
       include: {
         supplier: true,
         assignee: { select: { id: true, fullName: true } },
@@ -146,7 +195,12 @@ router.get(
       },
     });
     if (!request) throw ApiError.notFound('درخواست یافت نشد');
-    res.json({ request });
+    // Line items — fail-open if the table isn't migrated yet.
+    let items: unknown[] = [];
+    try {
+      items = await prisma.requestItem.findMany({ where: { requestId: request.id, tenantId }, orderBy: { sortOrder: 'asc' } });
+    } catch { /* not migrated yet */ }
+    res.json({ request: { ...request, items } });
   })
 );
 
@@ -220,9 +274,10 @@ router.post(
     // up front with a clear message (the DB constraint is the final guard).
     const dup = await prisma.request.findFirst({ where: { tenantId, requestNumber } });
     if (dup) throw ApiError.conflict(`درخواست با شماره «${requestNumber}» قبلاً ثبت شده است`);
+    const { items, ...rest } = data;
     const request = await prisma.request.create({
       data: {
-        ...data,
+        ...rest,
         requestNumber,
         tenantId,
         status: data.status ?? 'جدید',
@@ -230,6 +285,7 @@ router.post(
         updatedById: req.auth!.userId,
       },
     });
+    if (items?.length) await replaceRequestItems(tenantId, request.id, items);
     res.status(201).json({ request });
   })
 );
@@ -256,10 +312,12 @@ router.patch(
       body.requestNumber = requestNumber;
     }
 
+    const { items, ...bodyRest } = body;
     const request = await prisma.request.update({
       where: { id: existing.id },
-      data: { ...body, updatedById: req.auth!.userId },
+      data: { ...bodyRest, updatedById: req.auth!.userId },
     });
+    if (items !== undefined) await replaceRequestItems(tenantId, request.id, items);
     res.json({ request });
   })
 );

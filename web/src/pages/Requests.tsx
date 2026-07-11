@@ -85,9 +85,13 @@ const STATUSES = [
 const emptyForm = {
   requestNumber: '', title: '', description: '', estimatedAmount: '',
   status: 'جدید', category: '', orderNo: '', notes: '', supplierId: '',
-  assigneeId: '',
+  assigneeId: '', requestingUnit: '',
   followUpDate: '', deliveryDate: '',
 };
+
+interface ItemRow { category: string; description: string; quantity: string; unit: string; unitPrice: string; taxAmount: string; }
+const emptyItem: ItemRow = { category: '', description: '', quantity: '1', unit: '', unitPrice: '', taxAmount: '' };
+const lineTotal = (it: ItemRow) => (Number(it.quantity || 0) * Number(it.unitPrice || 0)) + Number(it.taxAmount || 0);
 
 function docIcon(mime: string | null): string {
   if (!mime) return '📄';
@@ -109,6 +113,7 @@ export function Requests({ archived = false }: { archived?: boolean }) {
   const [showForm, setShowForm] = useState(false);
   const [editReq, setEditReq] = useState<RequestRow | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
+  const [items, setItems] = useState<ItemRow[]>([]);
   const [formError, setFormError] = useState('');
   const [linkId, setLinkId] = useState<string | null>(null);
   const [compareReqId, setCompareReqId] = useState<string | null>(null);
@@ -183,11 +188,12 @@ export function Requests({ archived = false }: { archived?: boolean }) {
   function openCreate() {
     setEditReq(null);
     setForm({ ...emptyForm });
+    setItems([]);
     setFormError('');
     setShowForm(true);
   }
 
-  function openEdit(r: RequestRow) {
+  async function openEdit(r: RequestRow) {
     setEditReq(r);
     setForm({
       requestNumber: r.requestNumber,
@@ -200,11 +206,26 @@ export function Requests({ archived = false }: { archived?: boolean }) {
       notes: '',
       supplierId: r.supplier?.id ?? '',
       assigneeId: r.assignee?.id ?? '',
+      requestingUnit: '',
       followUpDate: r.followUpDate ? r.followUpDate.slice(0, 10) : '',
       deliveryDate: '',
     });
+    setItems([]);
     setFormError('');
     setShowForm(true);
+    // Load full detail (requestingUnit + line items) which the list row lacks.
+    try {
+      const d = (await api.get(`/${tid}/requests/${r.id}`)).data.request as {
+        requestingUnit?: string | null; category?: string | null; orderNo?: string | null; notes?: string | null;
+        items?: { category: string | null; description: string; quantity: string; unit: string | null; unitPrice: string | null; taxAmount: string | null }[];
+      };
+      setForm((f) => ({ ...f, requestingUnit: d.requestingUnit ?? '', category: d.category ?? '', orderNo: d.orderNo ?? '', notes: d.notes ?? '' }));
+      setItems((d.items ?? []).map((it) => ({
+        category: it.category ?? '', description: it.description, quantity: String(Number(it.quantity ?? 1)),
+        unit: it.unit ?? '', unitPrice: it.unitPrice != null ? String(Number(it.unitPrice)) : '',
+        taxAmount: it.taxAmount != null ? String(Number(it.taxAmount)) : '',
+      })));
+    } catch { /* detail/items unavailable — edit header only */ }
   }
 
   const saveMut = useMutation({
@@ -220,8 +241,19 @@ export function Requests({ archived = false }: { archived?: boolean }) {
         notes: form.notes || null,
         supplierId: form.supplierId || null,
         assigneeId: form.assigneeId || null,
+        requestingUnit: form.requestingUnit || null,
         followUpDate: form.followUpDate || null,
         deliveryDate: form.deliveryDate || null,
+        items: items
+          .filter((it) => it.description.trim())
+          .map((it) => ({
+            category: it.category || null,
+            description: it.description,
+            quantity: Number(it.quantity || 0),
+            unit: it.unit || null,
+            unitPrice: it.unitPrice ? Number(it.unitPrice) : null,
+            taxAmount: it.taxAmount ? Number(it.taxAmount) : null,
+          })),
       };
       if (editReq) return api.patch(`/${tid}/requests/${editReq.id}`, payload);
       return api.post(`/${tid}/requests`, payload);
@@ -342,6 +374,10 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                 </select>
               </label>
               <label className="block">
+                <span className="mb-1 block text-xs font-bold text-slate-600">واحد درخواست‌کننده</span>
+                <input className="input" placeholder="مثلاً تولید، فنی، اداری..." value={form.requestingUnit} onChange={(e) => setForm({ ...form, requestingUnit: e.target.value })} />
+              </label>
+              <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.followUpDate')}</span>
                 <JDatePicker className="input" value={form.followUpDate} onChange={(v) => setForm({ ...form, followUpDate: v })} />
               </label>
@@ -349,6 +385,56 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.deliveryDate')}</span>
                 <JDatePicker className="input" value={form.deliveryDate} onChange={(v) => setForm({ ...form, deliveryDate: v })} />
               </label>
+              {/* Line items — warehouse intake detail */}
+              <div className="sm:col-span-2 rounded-lg border border-slate-200 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">اقلام درخواست</span>
+                  <button type="button" className="btn btn-outline px-2 py-1 text-xs" onClick={() => setItems([...items, { ...emptyItem }])}>＋ افزودن قلم</button>
+                </div>
+                {items.length === 0 ? (
+                  <p className="py-2 text-center text-xs text-slate-400">قلمی اضافه نشده — روی «افزودن قلم» بزنید.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-right text-slate-500">
+                          <th className="p-1 font-medium">دسته</th>
+                          <th className="p-1 font-medium">شرح کالا</th>
+                          <th className="p-1 font-medium">تعداد</th>
+                          <th className="p-1 font-medium">واحد</th>
+                          <th className="p-1 font-medium">قیمت واحد</th>
+                          <th className="p-1 font-medium">مالیات</th>
+                          <th className="p-1 font-medium">جمع خط</th>
+                          <th className="p-1"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((it, i) => {
+                          const upd = (patch: Partial<ItemRow>) => setItems(items.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+                          return (
+                            <tr key={i} className="border-t border-slate-100">
+                              <td className="p-1"><input className="input px-1 py-1 text-xs w-20" value={it.category} onChange={(e) => upd({ category: e.target.value })} /></td>
+                              <td className="p-1"><input className="input px-1 py-1 text-xs min-w-[8rem]" value={it.description} onChange={(e) => upd({ description: e.target.value })} /></td>
+                              <td className="p-1"><input className="input px-1 py-1 text-xs w-16" type="number" value={it.quantity} onChange={(e) => upd({ quantity: e.target.value })} /></td>
+                              <td className="p-1"><input className="input px-1 py-1 text-xs w-16" value={it.unit} onChange={(e) => upd({ unit: e.target.value })} /></td>
+                              <td className="p-1"><input className="input px-1 py-1 text-xs w-24" type="number" value={it.unitPrice} onChange={(e) => upd({ unitPrice: e.target.value })} /></td>
+                              <td className="p-1"><input className="input px-1 py-1 text-xs w-20" type="number" value={it.taxAmount} onChange={(e) => upd({ taxAmount: e.target.value })} /></td>
+                              <td className="p-1 tabular-nums text-slate-600">{faMoney(lineTotal(it))}</td>
+                              <td className="p-1"><button type="button" className="text-rose-500 hover:text-rose-700" onClick={() => setItems(items.filter((_, j) => j !== i))}>✕</button></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-200 font-bold text-slate-700">
+                          <td className="p-1" colSpan={6}>جمع کل اقلام</td>
+                          <td className="p-1 tabular-nums" colSpan={2}>{faMoney(items.reduce((s, it) => s + lineTotal(it), 0))}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
               <label className="block sm:col-span-2">
                 <span className="mb-1 block text-xs font-bold text-slate-600">{t('requests.form.notes')}</span>
                 <textarea className="input min-h-[70px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
