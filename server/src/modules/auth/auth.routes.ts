@@ -12,6 +12,7 @@ import {
   signAccessToken,
 } from '../../auth/tokens';
 import { listUserTenants, resolveTenantAccess } from '../../rbac/access';
+import { disabledModuleKeys } from '../../core/entitlements';
 import { writeAudit, clientIp } from '../../lib/audit';
 import { env } from '../../config/env';
 
@@ -100,10 +101,14 @@ router.get(
     const tenants = await listUserTenants(user.id);
 
     let access = null;
+    let disabledModules: string[] = [];
     const tenantId = typeof req.query.tenantId === 'string' ? req.query.tenantId : tenants[0]?.tenantId;
-    if (tenantId) access = await resolveTenantAccess(user.id, tenantId);
+    if (tenantId) {
+      access = await resolveTenantAccess(user.id, tenantId);
+      disabledModules = await disabledModuleKeys(tenantId);
+    }
 
-    res.json({ user: publicUser(user), tenants, access });
+    res.json({ user: publicUser(user), tenants, access, disabledModules });
   })
 );
 

@@ -38,6 +38,8 @@ interface AuthState {
   tenants: TenantSummary[];
   currentTenantId: string | null;
   permissions: Set<string>;
+  /** Module keys explicitly disabled for the active tenant (entitlements). */
+  disabledModules: Set<string>;
   loading: boolean;
 }
 
@@ -46,6 +48,8 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
   can: (permission: string) => boolean;
+  /** True if the active tenant is entitled to the given module (default-allow). */
+  isModuleEnabled: (moduleKey: string) => boolean;
 }
 
 const TENANT_KEY = 'erp.currentTenant';
@@ -57,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tenants: [],
     currentTenantId: localStorage.getItem(TENANT_KEY),
     permissions: new Set(),
+    disabledModules: new Set(),
     loading: true,
   });
 
@@ -72,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tenants,
       currentTenantId: chosen,
       permissions: new Set(access?.permissions ?? []),
+      disabledModules: new Set<string>(data.disabledModules ?? []),
       loading: false,
     }));
   }, []);
@@ -103,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/auth/logout').catch(() => undefined);
     setAccessToken(null);
     localStorage.removeItem(TENANT_KEY);
-    setState({ user: null, tenants: [], currentTenantId: null, permissions: new Set(), loading: false });
+    setState({ user: null, tenants: [], currentTenantId: null, permissions: new Set(), disabledModules: new Set(), loading: false });
   }, []);
 
   const switchTenant = useCallback(
@@ -114,10 +120,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const can = useCallback((permission: string) => state.permissions.has(permission), [state.permissions]);
+  const isModuleEnabled = useCallback(
+    (moduleKey: string) => !state.disabledModules.has(moduleKey),
+    [state.disabledModules]
+  );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ ...state, login, logout, switchTenant, can }),
-    [state, login, logout, switchTenant, can]
+    () => ({ ...state, login, logout, switchTenant, can, isModuleEnabled }),
+    [state, login, logout, switchTenant, can, isModuleEnabled]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

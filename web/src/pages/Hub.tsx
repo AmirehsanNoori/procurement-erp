@@ -48,7 +48,7 @@ const MODULES: HubModule[] = [
 ];
 
 export function Hub() {
-  const { can, currentTenantId, tenants } = useAuth();
+  const { can, isModuleEnabled, currentTenantId, tenants } = useAuth();
   const navigate = useNavigate();
 
   const tenantName = tenants.find((t) => t.tenantId === currentTenantId)?.name ?? '';
@@ -60,7 +60,11 @@ export function Hub() {
     return hit ? hit[1] : null;
   }
 
-  const tiles = MODULES.map((m) => ({ m, entry: entryFor(m) }));
+  // A module is shown as available only if the tenant is entitled to it AND the
+  // user has permission to enter it. Entitlement is default-allow (see Core).
+  const tiles = MODULES
+    .filter((m) => isModuleEnabled(m.key))
+    .map((m) => ({ m, entry: entryFor(m) }));
 
   return (
     <Layout title="مرکز ماژول‌ها">

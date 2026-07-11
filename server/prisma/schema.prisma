@@ -56,8 +56,27 @@ model Tenant {
   blanketOrders         BlanketOrder[]
   expenseReports        ExpenseReport[]
   billingInvoices       BillingInvoice[]
+  tenantModules         TenantModule[]
 
   @@map("tenants")
+}
+
+/// Which platform modules a tenant may use (Core entitlement, ADR-0004).
+/// Default-allow: absence of a row means the module is available; an explicit
+/// row with enabled=false hides it for that tenant.
+model TenantModule {
+  id        String   @id @default(cuid())
+  tenantId  String
+  moduleKey String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, moduleKey])
+  @@index([tenantId])
+  @@map("tenant_modules")
 }
 
 model BillingInvoice {
