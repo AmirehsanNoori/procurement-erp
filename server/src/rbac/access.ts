@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { ROLE_DEFAULTS, RoleName } from './permissions';
+import { ROLE_DEFAULTS, RoleName, ALL_PERMISSION_KEYS } from './permissions';
 
 export interface TenantAccess {
   tenantId: string;
@@ -33,14 +33,15 @@ export async function resolveTenantAccess(
     if (user?.isSuperAdmin) {
       const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
       if (!tenant || !tenant.isActive) return null;
-      const all = await prisma.permission.findMany({ select: { key: true } });
       return {
         tenantId: tenant.id,
         tenantName: tenant.name,
         tenantCode: tenant.code,
         roleId: '',
         roleName: 'مدیر کل',
-        permissions: all.map((p) => p.key),
+        // Code catalog is the source of truth so new-module permissions work
+        // without re-seeding the DB permissions table.
+        permissions: ALL_PERMISSION_KEYS,
       };
     }
     return null;
@@ -73,8 +74,7 @@ export async function resolveTenantAccess(
   let permissions = Array.from(base);
 
   if (membership.user.isSuperAdmin) {
-    const all = await prisma.permission.findMany({ select: { key: true } });
-    permissions = all.map((p) => p.key);
+    permissions = ALL_PERMISSION_KEYS;
   }
 
   return {
