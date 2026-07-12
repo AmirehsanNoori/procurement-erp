@@ -33,6 +33,7 @@ export const MODULES = {
   correspondence: 'correspondence',
   expenses: 'expenses',
   billing: 'billing',
+  warehouse: 'warehouse',
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -57,6 +58,10 @@ export const ACTIONS = [
   'manage',
   'request',
   'vote',
+  'receive',
+  'issue',
+  'transfer',
+  'adjust',
 ] as const;
 
 export type ActionKey = (typeof ACTIONS)[number];
@@ -93,6 +98,7 @@ export const MODULE_ACTIONS: Record<ModuleKey, ActionKey[]> = {
   correspondence: ['view', 'create', 'edit', 'delete', 'export'],
   expenses: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
   billing: ['view', 'manage'],
+  warehouse: ['view', 'create', 'edit', 'delete', 'receive', 'issue', 'transfer', 'adjust', 'export'],
 };
 
 export interface PermissionDef {
@@ -122,6 +128,10 @@ const ACTION_FA: Record<ActionKey, string> = {
   manage: 'مدیریت',
   request: 'درخواست تأیید',
   vote: 'رأی‌گیری',
+  receive: 'رسید',
+  issue: 'حواله',
+  transfer: 'انتقال',
+  adjust: 'اصلاح موجودی',
 };
 
 export const MODULE_FA: Record<ModuleKey, string> = {
@@ -152,6 +162,7 @@ export const MODULE_FA: Record<ModuleKey, string> = {
   correspondence: 'مکاتبات اداری',
   expenses: 'گزارش‌های هزینه',
   billing: 'اشتراک و صورت‌حساب',
+  warehouse: 'انبار',
 };
 
 /** Flat list of all permission definitions, derived from MODULE_ACTIONS. */
@@ -232,8 +243,9 @@ const OFFICER_PERMISSIONS = [
  * delivery-related document upload/view, delivery notifications.
  */
 const WAREHOUSE_PERMISSIONS = [
+  ...allOf(['warehouse']),
   ...some('control_center', ['view', 'edit']),
-  ...some('requests', ['view', 'edit']),
+  ...some('requests', ['view', 'create', 'edit']),
   ...some('notification_center', ['view']),
   ...some('document_center', ['view', 'upload_document', 'view_document']),
   ...some('tasks', ['view']),

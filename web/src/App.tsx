@@ -30,6 +30,9 @@ import { Correspondence } from './pages/Correspondence';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
 import { Subscription } from './pages/Subscription';
+import { InventoryProducts } from './pages/InventoryProducts';
+import { InventoryWarehouses } from './pages/InventoryWarehouses';
+import { InventoryStock } from './pages/InventoryStock';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -81,6 +84,11 @@ export default function App() {
         <Route path="/correspondence" element={<Guarded permission="correspondence.view"><Correspondence /></Guarded>} />
         <Route path="/gantt" element={<Guarded permission="requests.view"><GanttView /></Guarded>} />
         <Route path="/expenses" element={<Guarded permission="expenses.view"><Expenses /></Guarded>} />
+
+        {/* Inventory / Warehouse */}
+        <Route path="/inventory/stock" element={<Guarded permission="warehouse.view"><InventoryStock /></Guarded>} />
+        <Route path="/inventory/products" element={<Guarded permission="warehouse.view"><InventoryProducts /></Guarded>} />
+        <Route path="/inventory/warehouses" element={<Guarded permission="warehouse.view"><InventoryWarehouses /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

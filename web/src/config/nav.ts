@@ -84,6 +84,16 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'warehouse',
+    title: 'انبار',
+    module: 'warehouse',
+    items: [
+      { key: 'invStock', path: '/inventory/stock', label: 'موجودی انبار', icon: '📦', permission: 'warehouse.view' },
+      { key: 'invProducts', path: '/inventory/products', label: 'کالاها', icon: '🏷️', permission: 'warehouse.view' },
+      { key: 'invWarehouses', path: '/inventory/warehouses', label: 'انبارها', icon: '🏬', permission: 'warehouse.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',

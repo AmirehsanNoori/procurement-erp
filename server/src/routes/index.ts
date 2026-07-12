@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
 import tenantRoutes from '../modules/tenants/tenants.routes';
 import userRoutes from '../modules/users/users.routes';
+import adminRoutes from '../modules/admin/admin.routes';
 import { requestsModule } from '../modules/requests/requests.module';
 import { suppliersModule } from '../modules/suppliers/suppliers.module';
 import { budgetsModule } from '../modules/budgets/budgets.module';
@@ -23,6 +24,7 @@ import searchRoutes from '../modules/search/search.routes';
 import approvalRoutes from '../modules/approvals/approvals.routes';
 import { correspondenceModule } from '../modules/correspondence/correspondence.module';
 import { expensesModule } from '../modules/expenses/expenses.module';
+import { inventoryModule } from '../modules/inventory/inventory.module';
 import billingRoutes from '../modules/billing/billing.routes';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireTenant } from '../middleware/requireTenant';
@@ -38,6 +40,7 @@ router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().t
 router.use('/auth', authRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/users', userRoutes);
+router.use('/admin', adminRoutes);
 
 // Tenant-scoped modules are registered with the Core module registry and mounted
 // beneath the shared auth + tenant gate. Same paths, same order, same behavior —
@@ -75,6 +78,7 @@ registry.register(legacy('search', 'Search', 'search', searchRoutes));
 registry.register(legacy('approvals', 'Approvals', 'approvals', approvalRoutes));
 registry.register(correspondenceModule);
 registry.register(expensesModule);
+registry.register(inventoryModule);
 registry.register(legacy('billing', 'Billing', 'billing', billingRoutes));
 
 const tenantScoped = Router({ mergeParams: true });

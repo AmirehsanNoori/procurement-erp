@@ -39,7 +39,7 @@ const MODULES: HubModule[] = [
       ['reports.view', '/reports'],
     ],
   },
-  { key: 'warehouse', title: 'انبار', icon: '🏬', desc: 'موجودی، رسید و حواله، انبارها و گردش کالا', accent: 'from-amber-500 to-orange-600', soon: true },
+  { key: 'warehouse', title: 'انبار', icon: '🏬', desc: 'موجودی، رسید و حواله، انبارها و گردش کالا', accent: 'from-amber-500 to-orange-600', entries: [['warehouse.view', '/inventory/stock']] },
   { key: 'contracts', title: 'قراردادها', icon: '📑', desc: 'چرخهٔ عمر قرارداد، متمم، ضمانت‌نامه، سررسید و تمدید', accent: 'from-emerald-500 to-teal-600', soon: true },
   { key: 'finance', title: 'مالی', icon: '💰', desc: 'پرداخت تأمین‌کننده، مراکز هزینه، کنترل بودجه و گزارش مالی', accent: 'from-rose-500 to-pink-600', soon: true },
   { key: 'hr', title: 'منابع انسانی', icon: '👥', desc: 'پرسنل، حضور و غیاب و امور اداری کارکنان', accent: 'from-violet-500 to-purple-600', soon: true },

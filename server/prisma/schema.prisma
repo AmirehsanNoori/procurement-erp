@@ -57,8 +57,103 @@ model Tenant {
   expenseReports        ExpenseReport[]
   billingInvoices       BillingInvoice[]
   tenantModules         TenantModule[]
+  products              Product[]
+  warehouses            Warehouse[]
+  stockMovements        StockMovement[]
+  stockLevels           StockLevel[]
 
   @@map("tenants")
+}
+
+// ── Inventory / Warehouse module ─────────────────────────────────────────────
+
+/// Product / item master.
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  code        String
+  name        String
+  category    String?
+  unit        String? // unit of measure
+  barcode     String?
+  minStock    Decimal? @db.Decimal(18, 3)
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
+  levels    StockLevel[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("products")
+}
+
+/// Physical/logical warehouse or store location.
+model Warehouse {
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
+  levels    StockLevel[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("warehouses")
+}
+
+/// Source of truth for stock: every receipt/issue/transfer/adjustment.
+model StockMovement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  productId   String
+  warehouseId String
+  type        String // receipt | issue | transfer_in | transfer_out | adjustment
+  quantity    Decimal  @db.Decimal(18, 3) // always positive; sign implied by type
+  date        DateTime @default(now())
+  refModule   String? // soft cross-module reference (ADR-0009)
+  refType     String?
+  refId       String?
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId])
+  @@index([warehouseId])
+  @@map("stock_movements")
+}
+
+/// Cached on-hand quantity per product+warehouse (derived from movements).
+model StockLevel {
+  id          String   @id @default(cuid())
+  tenantId    String
+  productId   String
+  warehouseId String
+  quantity    Decimal  @default(0) @db.Decimal(18, 3)
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, warehouseId])
+  @@index([tenantId])
+  @@map("stock_levels")
 }
 
 /// Which platform modules a tenant may use (Core entitlement, ADR-0004).
