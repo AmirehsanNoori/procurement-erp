@@ -215,4 +215,51 @@ router.post('/movements/transfer', requirePermission('warehouse.transfer'), vali
   res.status(201).json({ ok: true });
 }));
 
+// ── Procurement handoff: goods receipt against an invoice (Phase C) ───────────
+// Invoices procurement sent to the warehouse, awaiting a system receipt.
+router.get('/pending-receipts', requirePermission('warehouse.receive'), asyncHandler(async (req, res) => {
+  const invoices = await prisma.invoice.findMany({
+    where: { tenantId: tid(req), sentToWarehouseAt: { not: null }, receivedAt: null, archived: false },
+    include: { supplier: { select: { name: true } }, request: { select: { id: true, requestNumber: true } } },
+    orderBy: { sentToWarehouseAt: 'asc' },
+  });
+  res.json({ invoices });
+}));
+
+const receiveSchema = z.object({
+  invoiceId: z.string().min(1),
+  warehouseId: z.string().min(1),
+  lines: z.array(z.object({ productId: z.string().min(1), quantity: z.coerce.number().positive(), note: z.string().optional().nullable() })).min(1),
+});
+// Register the receipt: stock-in each line (soft-ref to the invoice) and mark the
+// invoice received so procurement can forward it to finance.
+router.post('/receive', requirePermission('warehouse.receive'), validate(receiveSchema), asyncHandler(async (req, res) => {
+  const b = req.body as z.infer<typeof receiveSchema>;
+  const tenantId = tid(req);
+  const invoice = await prisma.invoice.findFirst({ where: { id: b.invoiceId, tenantId } });
+  if (!invoice) throw ApiError.notFound('فاکتور یافت نشد');
+  if (!invoice.sentToWarehouseAt) throw ApiError.badRequest('این فاکتور به انبار ارسال نشده است');
+  const warehouse = await prisma.warehouse.findFirst({ where: { id: b.warehouseId, tenantId } });
+  if (!warehouse) throw ApiError.badRequest('انبار نامعتبر است');
+  const productIds = [...new Set(b.lines.map((l) => l.productId))];
+  const products = await prisma.product.findMany({ where: { tenantId, id: { in: productIds } }, select: { id: true } });
+  if (products.length !== productIds.length) throw ApiError.badRequest('کالای نامعتبر در اقلام');
+
+  await prisma.$transaction(async (tx) => {
+    for (const line of b.lines) {
+      await tx.stockMovement.create({
+        data: {
+          tenantId, productId: line.productId, warehouseId: b.warehouseId,
+          type: 'receipt', quantity: line.quantity,
+          refModule: 'procurement', refType: 'invoice', refId: invoice.id,
+          note: line.note ?? null, createdById: req.auth!.userId,
+        },
+      });
+      await applyDelta(tx, tenantId, line.productId, b.warehouseId, line.quantity);
+    }
+    await tx.invoice.update({ where: { id: invoice.id }, data: { receivedAt: new Date() } });
+  });
+  res.json({ ok: true });
+}));
+
 export default router;

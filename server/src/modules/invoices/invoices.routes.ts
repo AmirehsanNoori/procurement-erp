@@ -283,4 +283,38 @@ router.delete(
   })
 );
 
+// ── Procure-to-receive-to-pay handoff (Phase C) ──────────────────────────────
+// Procurement hands the final invoice to the warehouse for a system receipt.
+router.post(
+  '/:id/send-to-warehouse',
+  requirePermission('invoices.edit'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, tenantId } });
+    if (!existing) throw ApiError.notFound('فاکتور یافت نشد');
+    const invoice = await prisma.invoice.update({
+      where: { id: existing.id },
+      data: { sentToWarehouseAt: existing.sentToWarehouseAt ?? new Date(), receivedAt: null, updatedById: req.auth!.userId },
+    });
+    res.json({ invoice });
+  })
+);
+
+// Procurement forwards the received invoice to finance (only after goods receipt).
+router.post(
+  '/:id/send-to-finance',
+  requirePermission('invoices.edit'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenant!.tenantId;
+    const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, tenantId } });
+    if (!existing) throw ApiError.notFound('فاکتور یافت نشد');
+    if (!existing.receivedAt) throw ApiError.badRequest('ابتدا باید رسید انبار ثبت شود');
+    const invoice = await prisma.invoice.update({
+      where: { id: existing.id },
+      data: { sentToFinanceAt: existing.sentToFinanceAt ?? new Date(), sentToAccounting: true, updatedById: req.auth!.userId },
+    });
+    res.json({ invoice });
+  })
+);
+
 export default router;

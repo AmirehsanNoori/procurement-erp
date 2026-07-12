@@ -575,6 +575,10 @@ model Invoice {
   followUpDate            DateTime?
   notes                   String?
   archived                Boolean   @default(false)
+  // Procure-to-receive-to-pay handoff (Phase C):
+  sentToWarehouseAt       DateTime? // procurement handed the invoice to the warehouse for receipt
+  receivedAt              DateTime? // warehouse registered the goods receipt (stock in)
+  sentToFinanceAt         DateTime? // procurement forwarded the received invoice to finance
   createdById             String?
   updatedById             String?
   createdAt               DateTime  @default(now())

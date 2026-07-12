@@ -16,6 +16,7 @@ import { EntityTimeline } from '../components/EntityTimeline';
 interface Invoice {
   id: string; invoiceNumber: string; status: string; totalAmount: string; dueDate: string | null;
   paidAmount: number; remainingAmount: number; batch: string | null;
+  sentToWarehouseAt: string | null; receivedAt: string | null; sentToFinanceAt: string | null;
   supplier: { name: string } | null; budget: { name: string | null } | null; request: { requestNumber: string } | null;
 }
 interface InvoiceDetail extends Invoice {
@@ -145,6 +146,12 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   const delMut = useMutation({
     mutationFn: async (id: string) => api.delete(`/${tid}/invoices/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices', tid] }); qc.invalidateQueries({ queryKey: ['budgets', tid] }); },
+  });
+
+  const handoffMut = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: 'send-to-warehouse' | 'send-to-finance' }) => api.post(`/${tid}/invoices/${id}/${action}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices', tid] }),
+    onError: (e) => alert(apiError(e)),
   });
 
   const payMut = useMutation({
@@ -445,6 +452,19 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
                       >🔍</button>
                       {!paidOnly && i.remainingAmount > 0 && (can('payments.register_payment') || can('payments.create')) && (
                         <button className="btn btn-outline px-2 py-1" title={t('dashboard.quickPay.submit')} onClick={() => { setPayErr(''); setPay({ inv: i, amount: String(i.remainingAmount), date: '', listNumber: '' }); }}>💳</button>
+                      )}
+                      {/* Warehouse handoff */}
+                      {!paidOnly && can('invoices.edit') && !i.sentToWarehouseAt && (
+                        <button className="btn btn-outline px-2 py-1 text-amber-700" title="ارسال به انبار جهت رسید" onClick={() => handoffMut.mutate({ id: i.id, action: 'send-to-warehouse' })}>📦→</button>
+                      )}
+                      {i.sentToWarehouseAt && !i.receivedAt && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 self-center">در انتظار رسید انبار</span>
+                      )}
+                      {i.receivedAt && !i.sentToFinanceAt && can('invoices.edit') && (
+                        <button className="btn btn-outline px-2 py-1 text-emerald-700" title="رسید شد — ارسال به مالی" onClick={() => handoffMut.mutate({ id: i.id, action: 'send-to-finance' })}>✅ مالی→</button>
+                      )}
+                      {i.sentToFinanceAt && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 self-center">ارسال به مالی</span>
                       )}
                       {!paidOnly && can('invoices.delete') && (
                         <button className="btn btn-outline px-2 py-1 text-rose-600" onClick={() => { if (confirm(t('common.delete') + '؟')) delMut.mutate(i.id); }}>🗑</button>

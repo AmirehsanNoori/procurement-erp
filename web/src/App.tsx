@@ -33,6 +33,7 @@ import { Subscription } from './pages/Subscription';
 import { InventoryProducts } from './pages/InventoryProducts';
 import { InventoryWarehouses } from './pages/InventoryWarehouses';
 import { InventoryStock } from './pages/InventoryStock';
+import { InventoryReceipts } from './pages/InventoryReceipts';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -87,6 +88,7 @@ export default function App() {
 
         {/* Inventory / Warehouse */}
         <Route path="/inventory/stock" element={<Guarded permission="warehouse.view"><InventoryStock /></Guarded>} />
+        <Route path="/inventory/receipts" element={<Guarded permission="warehouse.receive"><InventoryReceipts /></Guarded>} />
         <Route path="/inventory/products" element={<Guarded permission="warehouse.view"><InventoryProducts /></Guarded>} />
         <Route path="/inventory/warehouses" element={<Guarded permission="warehouse.view"><InventoryWarehouses /></Guarded>} />
 
