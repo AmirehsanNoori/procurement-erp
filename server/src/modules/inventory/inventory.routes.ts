@@ -224,11 +224,29 @@ router.get('/pending-receipts', requirePermission('warehouse.receive'), asyncHan
       supplier: { select: { name: true } },
       // Include the originating request's line items so the warehouse receives
       // against what was actually requested (Part 1).
-      request: { select: { id: true, requestNumber: true, items: { select: { category: true, description: true, quantity: true, unit: true }, orderBy: { sortOrder: 'asc' } } } },
+      request: { select: { id: true, requestNumber: true, items: { select: { productId: true, category: true, description: true, quantity: true, unit: true }, orderBy: { sortOrder: 'asc' } } } },
     },
     orderBy: { sentToWarehouseAt: 'asc' },
   });
   res.json({ invoices });
+}));
+
+// Goods-receipt history.
+router.get('/receipts', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
+  const receipts = await prisma.goodsReceipt.findMany({
+    where: { tenantId: tid(req) },
+    include: {
+      warehouse: { select: { name: true } },
+      items: { include: { product: { select: { code: true, name: true, unit: true } } } },
+    },
+    orderBy: { receivedAt: 'desc' },
+    take: 300,
+  });
+  // Attach the linked invoice number (soft cross-module reference).
+  const invIds = [...new Set(receipts.map((r) => r.refId).filter(Boolean) as string[])];
+  const invoices = invIds.length ? await prisma.invoice.findMany({ where: { tenantId: tid(req), id: { in: invIds } }, select: { id: true, invoiceNumber: true } }) : [];
+  const invMap = new Map(invoices.map((i) => [i.id, i.invoiceNumber]));
+  res.json({ receipts: receipts.map((r) => ({ ...r, invoiceNumber: r.refId ? invMap.get(r.refId) ?? null : null })) });
 }));
 
 const receiveSchema = z.object({

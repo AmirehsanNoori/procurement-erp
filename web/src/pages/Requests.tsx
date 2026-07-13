@@ -90,8 +90,8 @@ const emptyForm = {
   followUpDate: '', deliveryDate: '',
 };
 
-interface ItemRow { category: string; description: string; quantity: string; unit: string; unitPrice: string; taxAmount: string; }
-const emptyItem: ItemRow = { category: '', description: '', quantity: '1', unit: '', unitPrice: '', taxAmount: '' };
+interface ItemRow { productId: string; category: string; description: string; quantity: string; unit: string; unitPrice: string; taxAmount: string; }
+const emptyItem: ItemRow = { productId: '', category: '', description: '', quantity: '1', unit: '', unitPrice: '', taxAmount: '' };
 const lineTotal = (it: ItemRow) => (Number(it.quantity || 0) * Number(it.unitPrice || 0)) + Number(it.taxAmount || 0);
 
 function docIcon(mime: string | null): string {
@@ -147,6 +147,17 @@ export function Requests({ archived = false, intakeSource }: { archived?: boolea
     queryKey: ['assignable-users', tid],
     queryFn: async () => (await api.get(`/${tid}/requests/assignable-users`)).data.users as { id: string; fullName: string }[],
     enabled: Boolean(tid),
+  });
+
+  // Product catalog for linking request line items (optional; empty if the user
+  // lacks warehouse access — free-text description still works).
+  const productsQ = useQuery({
+    queryKey: ['inv-products-opt', tid],
+    queryFn: async () => {
+      try { return (await api.get(`/${tid}/inventory/products`)).data.products as { id: string; code: string; name: string; unit: string | null }[]; }
+      catch { return []; }
+    },
+    enabled: Boolean(tid), retry: false,
   });
 
   const kanbanQ = useQuery({
@@ -222,6 +233,7 @@ export function Requests({ archived = false, intakeSource }: { archived?: boolea
       };
       setForm((f) => ({ ...f, requestingUnit: d.requestingUnit ?? '', category: d.category ?? '', orderNo: d.orderNo ?? '', notes: d.notes ?? '' }));
       setItems((d.items ?? []).map((it) => ({
+        productId: (it as { productId?: string | null }).productId ?? '',
         category: it.category ?? '', description: it.description, quantity: String(Number(it.quantity ?? 1)),
         unit: it.unit ?? '', unitPrice: it.unitPrice != null ? String(Number(it.unitPrice)) : '',
         taxAmount: it.taxAmount != null ? String(Number(it.taxAmount)) : '',
@@ -248,6 +260,7 @@ export function Requests({ archived = false, intakeSource }: { archived?: boolea
         items: items
           .filter((it) => it.description.trim())
           .map((it) => ({
+            productId: it.productId || null,
             category: it.category || null,
             description: it.description,
             quantity: Number(it.quantity || 0),
@@ -400,6 +413,7 @@ export function Requests({ archived = false, intakeSource }: { archived?: boolea
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="text-right text-slate-500">
+                          <th className="p-1 font-medium">کالا (کاتالوگ)</th>
                           <th className="p-1 font-medium">دسته</th>
                           <th className="p-1 font-medium">شرح کالا</th>
                           <th className="p-1 font-medium">تعداد</th>
@@ -415,6 +429,7 @@ export function Requests({ archived = false, intakeSource }: { archived?: boolea
                           const upd = (patch: Partial<ItemRow>) => setItems(items.map((r, j) => (j === i ? { ...r, ...patch } : r)));
                           return (
                             <tr key={i} className="border-t border-slate-100">
+                              <td className="p-1"><div className="min-w-[9rem]"><SearchableSelect value={it.productId} placeholder="— کالا —" options={[{ value: '', label: '— آزاد —' }, ...(productsQ.data ?? []).map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]} onChange={(v) => { const p = (productsQ.data ?? []).find((x) => x.id === v); upd({ productId: v, description: it.description || p?.name || '', unit: it.unit || p?.unit || '' }); }} /></div></td>
                               <td className="p-1"><input className="input px-1 py-1 text-xs w-20" value={it.category} onChange={(e) => upd({ category: e.target.value })} /></td>
                               <td className="p-1"><input className="input px-1 py-1 text-xs min-w-[8rem]" value={it.description} onChange={(e) => upd({ description: e.target.value })} /></td>
                               <td className="p-1"><input className="input px-1 py-1 text-xs w-16" type="number" value={it.quantity} onChange={(e) => upd({ quantity: e.target.value })} /></td>
@@ -429,7 +444,7 @@ export function Requests({ archived = false, intakeSource }: { archived?: boolea
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-slate-200 font-bold text-slate-700">
-                          <td className="p-1" colSpan={6}>جمع کل اقلام</td>
+                          <td className="p-1" colSpan={7}>جمع کل اقلام</td>
                           <td className="p-1 tabular-nums" colSpan={2}>{faMoney(items.reduce((s, it) => s + lineTotal(it), 0))}</td>
                         </tr>
                       </tfoot>

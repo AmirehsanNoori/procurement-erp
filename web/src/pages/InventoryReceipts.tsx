@@ -6,7 +6,7 @@ import { api, apiError } from '../lib/api';
 import { faDate, faMoney } from '../lib/format';
 import { SearchableSelect } from '../components/SearchableSelect';
 
-interface ReqItem { category: string | null; description: string; quantity: string; unit: string | null; }
+interface ReqItem { productId: string | null; category: string | null; description: string; quantity: string; unit: string | null; }
 interface PendingInvoice {
   id: string; invoiceNumber: string; totalAmount: string; sentToWarehouseAt: string | null;
   supplier: { name: string } | null; request: { id: string; requestNumber: string; items: ReqItem[] } | null;
@@ -46,7 +46,12 @@ export function InventoryReceipts() {
     onError: (e) => setErr(apiError(e)),
   });
 
-  function open(inv: PendingInvoice) { setActive(inv); setWarehouseId(''); setLines([{ productId: '', quantity: '' }]); setErr(''); }
+  function open(inv: PendingInvoice) {
+    setActive(inv); setWarehouseId(''); setErr('');
+    // Pre-fill receipt lines from the request's catalog-linked items (Part 1).
+    const prefill = (inv.request?.items ?? []).filter((it) => it.productId).map((it) => ({ productId: it.productId as string, quantity: String(Number(it.quantity)) }));
+    setLines(prefill.length ? prefill : [{ productId: '', quantity: '' }]);
+  }
   const canSubmit = warehouseId && lines.some((l) => l.productId && Number(l.quantity) > 0);
 
   return (

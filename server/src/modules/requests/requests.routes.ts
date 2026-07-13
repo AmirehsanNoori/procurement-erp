@@ -15,6 +15,7 @@ const dateField = z.coerce.date().optional().nullable();
 const numField = z.coerce.number().optional().nullable();
 
 const itemSchema = z.object({
+  productId: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
   description: z.string().min(1),
   quantity: z.coerce.number().default(1),
@@ -41,6 +42,7 @@ async function replaceRequestItems(tenantId: string, requestId: string, items: I
               data: items.map((it, i) => ({
                 tenantId,
                 requestId,
+                productId: it.productId ?? null,
                 category: it.category ?? null,
                 description: it.description,
                 quantity: it.quantity ?? 1,
