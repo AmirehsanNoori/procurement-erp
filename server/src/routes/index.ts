@@ -30,20 +30,10 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
-import { prisma } from '../lib/prisma';
-import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-
-// TEMPORARY: apply the request_items.productId column to the (build-unreachable)
-// Supabase DB via app runtime. Super-admin only; idempotent. Remove after use.
-router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
-  await prisma.$executeRawUnsafe('ALTER TABLE "request_items" ADD COLUMN IF NOT EXISTS "productId" TEXT;');
-  res.json({ ok: true, applied: 'request_items.productId' });
-}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
