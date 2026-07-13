@@ -29,6 +29,7 @@ interface RequestRow {
   description: string | null;
   status: string;
   estimatedAmount: string | null;
+  source: string | null;
   supplier: { id: string; name: string } | null;
   assignee: { id: string; fullName: string } | null;
   followUpDate: string | null;
@@ -104,7 +105,7 @@ function docIcon(mime: string | null): string {
 
 
 
-export function Requests({ archived = false }: { archived?: boolean }) {
+export function Requests({ archived = false, intakeSource }: { archived?: boolean; intakeSource?: string }) {
   const { t } = useTranslation();
   const { currentTenantId, can } = useAuth();
   const qc = useQueryClient();
@@ -256,7 +257,8 @@ export function Requests({ archived = false }: { archived?: boolean }) {
           })),
       };
       if (editReq) return api.patch(`/${tid}/requests/${editReq.id}`, payload);
-      return api.post(`/${tid}/requests`, payload);
+      // Tag who registered it (warehouse intake vs procurement).
+      return api.post(`/${tid}/requests`, { ...payload, source: intakeSource ?? 'procurement' });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['requests', tid] });
@@ -571,6 +573,9 @@ export function Requests({ archived = false }: { archived?: boolean }) {
                   </td>
                   <td className="p-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
+                    {r.source === 'warehouse' && r.status === 'جدید' && (
+                      <span className="mr-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">🆕 جدید از انبار</span>
+                    )}
                   </td>
                   <td className="p-3">{faDate(r.followUpDate)}</td>
                   <td className="p-3">{r._count?.quotations ?? 0}</td>

@@ -63,6 +63,7 @@ async function replaceRequestItems(tenantId: string, requestId: string, items: I
 const upsertSchema = z.object({
   requestNumber: z.string().min(1),
   requestingUnit: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
   items: z.array(itemSchema).optional(),
   orderNo: z.string().optional().nullable(),
   title: z.string().optional().nullable(),

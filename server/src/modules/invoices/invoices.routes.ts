@@ -296,6 +296,10 @@ router.post(
       where: { id: existing.id },
       data: { sentToWarehouseAt: existing.sentToWarehouseAt ?? new Date(), receivedAt: null, updatedById: req.auth!.userId },
     });
+    // Notify the warehouse (Core notification; tenant-scoped).
+    await prisma.notification.create({
+      data: { tenantId, type: 'inventory', level: 'important', title: `فاکتور ${invoice.invoiceNumber} برای ثبت رسید به انبار ارسال شد`, entityType: 'invoice', entityId: invoice.id },
+    }).catch(() => undefined);
     res.json({ invoice });
   })
 );

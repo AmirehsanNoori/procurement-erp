@@ -61,6 +61,7 @@ model Tenant {
   warehouses            Warehouse[]
   stockMovements        StockMovement[]
   stockLevels           StockLevel[]
+  goodsReceipts         GoodsReceipt[]
 
   @@map("tenants")
 }
@@ -83,9 +84,10 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  movements StockMovement[]
-  levels    StockLevel[]
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements    StockMovement[]
+  levels       StockLevel[]
+  receiptItems GoodsReceiptItem[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -106,10 +108,50 @@ model Warehouse {
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   movements StockMovement[]
   levels    StockLevel[]
+  receipts  GoodsReceipt[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@map("warehouses")
+}
+
+/// A goods receipt document: what the warehouse received against a procurement
+/// invoice (soft cross-module reference to procurement).
+model GoodsReceipt {
+  id            String   @id @default(cuid())
+  tenantId      String
+  warehouseId   String
+  refModule     String? // 'procurement'
+  refType       String? // 'invoice'
+  refId         String? // invoice id
+  requestRefId  String? // originating request id (soft)
+  note          String?
+  receivedById  String?
+  receivedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  items     GoodsReceiptItem[]
+
+  @@index([tenantId])
+  @@index([refId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id          String  @id @default(cuid())
+  tenantId    String
+  receiptId   String
+  productId   String
+  quantity    Decimal @db.Decimal(18, 3)
+  note        String?
+
+  receipt GoodsReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@map("goods_receipt_items")
 }
 
 /// Source of truth for stock: every receipt/issue/transfer/adjustment.
@@ -426,6 +468,7 @@ model Request {
   archived           Boolean   @default(false)
   assigneeId         String?
   requestingUnit     String? // unit/department that raised the request (warehouse intake)
+  source             String? // who registered it: 'warehouse' (intake) | 'procurement'
   createdById        String?
   updatedById        String?
   createdAt          DateTime  @default(now())

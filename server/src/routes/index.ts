@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
 import tenantRoutes from '../modules/tenants/tenants.routes';
 import userRoutes from '../modules/users/users.routes';
+import adminRoutes from '../modules/admin/admin.routes';
 import { requestsModule } from '../modules/requests/requests.module';
 import { suppliersModule } from '../modules/suppliers/suppliers.module';
 import { budgetsModule } from '../modules/budgets/budgets.module';
@@ -39,6 +40,7 @@ router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().t
 router.use('/auth', authRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/users', userRoutes);
+router.use('/admin', adminRoutes);
 
 // Tenant-scoped modules are registered with the Core module registry and mounted
 // beneath the shared auth + tenant gate. Same paths, same order, same behavior —

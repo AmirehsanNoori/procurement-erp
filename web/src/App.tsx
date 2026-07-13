@@ -89,6 +89,7 @@ export default function App() {
         {/* Inventory / Warehouse */}
         <Route path="/inventory/stock" element={<Guarded permission="warehouse.view"><InventoryStock /></Guarded>} />
         <Route path="/inventory/receipts" element={<Guarded permission="warehouse.receive"><InventoryReceipts /></Guarded>} />
+        <Route path="/inventory/requests" element={<Guarded permission="warehouse.view"><Requests intakeSource="warehouse" /></Guarded>} />
         <Route path="/inventory/products" element={<Guarded permission="warehouse.view"><InventoryProducts /></Guarded>} />
         <Route path="/inventory/warehouses" element={<Guarded permission="warehouse.view"><InventoryWarehouses /></Guarded>} />
 

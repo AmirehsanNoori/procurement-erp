@@ -220,7 +220,12 @@ router.post('/movements/transfer', requirePermission('warehouse.transfer'), vali
 router.get('/pending-receipts', requirePermission('warehouse.receive'), asyncHandler(async (req, res) => {
   const invoices = await prisma.invoice.findMany({
     where: { tenantId: tid(req), sentToWarehouseAt: { not: null }, receivedAt: null, archived: false },
-    include: { supplier: { select: { name: true } }, request: { select: { id: true, requestNumber: true } } },
+    include: {
+      supplier: { select: { name: true } },
+      // Include the originating request's line items so the warehouse receives
+      // against what was actually requested (Part 1).
+      request: { select: { id: true, requestNumber: true, items: { select: { category: true, description: true, quantity: true, unit: true }, orderBy: { sortOrder: 'asc' } } } },
+    },
     orderBy: { sentToWarehouseAt: 'asc' },
   });
   res.json({ invoices });
@@ -246,7 +251,16 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
   if (products.length !== productIds.length) throw ApiError.badRequest('کالای نامعتبر در اقلام');
 
   await prisma.$transaction(async (tx) => {
+    // Formal goods-receipt document (Part 1).
+    const receipt = await tx.goodsReceipt.create({
+      data: {
+        tenantId, warehouseId: b.warehouseId,
+        refModule: 'procurement', refType: 'invoice', refId: invoice.id,
+        requestRefId: invoice.requestId ?? null, receivedById: req.auth!.userId,
+      },
+    });
     for (const line of b.lines) {
+      await tx.goodsReceiptItem.create({ data: { tenantId, receiptId: receipt.id, productId: line.productId, quantity: line.quantity, note: line.note ?? null } });
       await tx.stockMovement.create({
         data: {
           tenantId, productId: line.productId, warehouseId: b.warehouseId,
@@ -259,6 +273,10 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
     }
     await tx.invoice.update({ where: { id: invoice.id }, data: { receivedAt: new Date() } });
   });
+  // Notify procurement that the goods were received.
+  await prisma.notification.create({
+    data: { tenantId, type: 'invoice', level: 'important', title: `رسید فاکتور ${invoice.invoiceNumber} در انبار ثبت شد`, entityType: 'invoice', entityId: invoice.id },
+  }).catch(() => undefined);
   res.json({ ok: true });
 }));
 

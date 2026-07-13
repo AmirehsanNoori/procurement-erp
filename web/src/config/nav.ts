@@ -88,6 +88,7 @@ export const NAV: NavGroup[] = [
     title: 'انبار',
     module: 'warehouse',
     items: [
+      { key: 'invRequests', path: '/inventory/requests', label: 'ثبت درخواست خرید', icon: '📝', permission: 'warehouse.view' },
       { key: 'invStock', path: '/inventory/stock', label: 'موجودی انبار', icon: '📦', permission: 'warehouse.view' },
       { key: 'invReceipts', path: '/inventory/receipts', label: 'رسیدهای در انتظار', icon: '📥', permission: 'warehouse.receive' },
       { key: 'invProducts', path: '/inventory/products', label: 'کالاها', icon: '🏷️', permission: 'warehouse.view' },

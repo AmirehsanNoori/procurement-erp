@@ -6,9 +6,10 @@ import { api, apiError } from '../lib/api';
 import { faDate, faMoney } from '../lib/format';
 import { SearchableSelect } from '../components/SearchableSelect';
 
+interface ReqItem { category: string | null; description: string; quantity: string; unit: string | null; }
 interface PendingInvoice {
   id: string; invoiceNumber: string; totalAmount: string; sentToWarehouseAt: string | null;
-  supplier: { name: string } | null; request: { id: string; requestNumber: string } | null;
+  supplier: { name: string } | null; request: { id: string; requestNumber: string; items: ReqItem[] } | null;
 }
 interface Line { productId: string; quantity: string; }
 
@@ -79,6 +80,16 @@ export function InventoryReceipts() {
             <h2 className="mb-1 text-base font-bold text-slate-800">ثبت رسید — فاکتور {active.invoiceNumber}</h2>
             <p className="mb-3 text-xs text-slate-500">{active.supplier?.name} {active.request?.requestNumber ? `— درخواست ${active.request.requestNumber}` : ''}</p>
             {err && <div className="mb-2 text-sm text-rose-600">{err}</div>}
+            {active.request && active.request.items.length > 0 && (
+              <div className="mb-3 rounded-lg border border-indigo-100 bg-indigo-50 p-2">
+                <div className="mb-1 text-[11px] font-bold text-indigo-700">اقلام درخواست‌شده (مرجع):</div>
+                <ul className="space-y-0.5 text-[11px] text-indigo-800">
+                  {active.request.items.map((it, i) => (
+                    <li key={i}>• {it.description} — {Number(it.quantity)} {it.unit ?? ''}{it.category ? ` (${it.category})` : ''}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <label className="mb-3 block"><span className="mb-1 block text-xs font-bold text-slate-600">انبار مقصد</span>
               <SearchableSelect value={warehouseId} onChange={setWarehouseId} placeholder="انتخاب انبار..." options={(whQ.data ?? []).map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` }))} />
             </label>
