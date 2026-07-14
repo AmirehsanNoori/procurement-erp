@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate';
 import { requirePermission, requireAnyPermission } from '../../middleware/requirePermission';
 import { recalcInvoiceStatus } from '../invoices/service';
 import { loadFinance, INVOICE_STATUS } from '../finance/calc';
+import { createPaymentJournal } from '../finance/payment-posting';
 
 const router = Router({ mergeParams: true });
 
@@ -153,7 +154,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenant!.tenantId;
     const body = req.body as { invoiceId: string; paymentDate?: Date; amount: number; paymentListNumber?: string; reference?: string; notes?: string };
-    const inv = await prisma.invoice.findFirst({ where: { id: body.invoiceId, tenantId } });
+    const inv = await prisma.invoice.findFirst({ where: { id: body.invoiceId, tenantId }, include: { supplier: true } });
     if (!inv) throw ApiError.notFound('فاکتور یافت نشد');
 
     const payment = await prisma.payment.create({
@@ -169,7 +170,19 @@ router.post(
       },
     });
     const status = await recalcInvoiceStatus(tenantId, inv.id);
-    res.status(201).json({ payment, invoiceStatus: status });
+    // F3: auto-generate a draft payment voucher (fail-open — never block payment).
+    let posting: Awaited<ReturnType<typeof createPaymentJournal>> = { status: 'skipped', reason: 'خطای داخلی' };
+    try {
+      posting = await createPaymentJournal(tenantId, { id: payment.id, amount: payment.amount, paymentDate: payment.paymentDate, invoiceNumber: inv.invoiceNumber, supplierName: inv.supplier?.name ?? null }, req.auth!.userId);
+      if (posting.status === 'created') {
+        await prisma.notification.create({
+          data: { tenantId, type: 'finance', level: 'important', title: `سند پرداخت پیش‌نویس شماره ${posting.journalNumber} برای فاکتور ${inv.invoiceNumber} ایجاد شد`, entityType: 'finance_journal', entityId: posting.journalId! },
+        }).catch(() => undefined);
+      }
+    } catch {
+      posting = { status: 'skipped', reason: 'ایجاد سند پرداخت ناموفق بود' };
+    }
+    res.status(201).json({ payment, invoiceStatus: status, posting });
   })
 );
 
@@ -209,6 +222,8 @@ router.delete(
     if (!existing) throw ApiError.notFound('پرداخت یافت نشد');
     await prisma.payment.delete({ where: { id: existing.id } });
     await recalcInvoiceStatus(tenantId, existing.invoiceId);
+    // F3: remove the auto-generated voucher if it's still a draft (posted stays for audit).
+    await prisma.finJournal.deleteMany({ where: { tenantId, refModule: 'procurement', refType: 'payment', refId: existing.id, status: 'draft' } }).catch(() => undefined);
     res.json({ ok: true });
   })
 );

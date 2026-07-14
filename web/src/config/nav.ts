@@ -105,6 +105,7 @@ export const NAV: NavGroup[] = [
       { key: 'finJournals', path: '/finance/journals', label: 'دفتر روزنامه', icon: '📓', permission: 'finance.view' },
       { key: 'finLedger', path: '/finance/ledger', label: 'دفتر کل', icon: '📗', permission: 'finance.view' },
       { key: 'finTrialBalance', path: '/finance/trial-balance', label: 'تراز آزمایشی', icon: '⚖️', permission: 'finance.view' },
+      { key: 'finPayables', path: '/finance/payables', label: 'حساب‌های پرداختنی', icon: '💳', permission: 'finance.view' },
       { key: 'finAccounts', path: '/finance/accounts', label: 'کدینگ حساب‌ها', icon: '🗂️', permission: 'finance.view' },
     ],
   },

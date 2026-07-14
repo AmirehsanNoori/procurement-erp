@@ -40,6 +40,7 @@ import { FinJournals } from './pages/FinJournals';
 import { FinJournalEntry } from './pages/FinJournalEntry';
 import { FinLedger } from './pages/FinLedger';
 import { FinTrialBalance } from './pages/FinTrialBalance';
+import { FinPayables } from './pages/FinPayables';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -106,6 +107,7 @@ export default function App() {
         <Route path="/finance/journals/:id/edit" element={<Guarded permission="finance.edit"><FinJournalEntry /></Guarded>} />
         <Route path="/finance/ledger" element={<Guarded permission="finance.view"><FinLedger /></Guarded>} />
         <Route path="/finance/trial-balance" element={<Guarded permission="finance.view"><FinTrialBalance /></Guarded>} />
+        <Route path="/finance/payables" element={<Guarded permission="finance.view"><FinPayables /></Guarded>} />
         <Route path="/finance/accounts" element={<Guarded permission="finance.view"><FinAccounts /></Guarded>} />
 
         {/* System */}

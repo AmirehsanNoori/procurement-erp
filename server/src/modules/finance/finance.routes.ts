@@ -7,6 +7,7 @@ import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { IRANIAN_COA, levelOfCode, AccountType } from './coa-seed';
 import { createInvoiceJournal } from './invoice-posting';
+import { createPaymentJournal } from './payment-posting';
 
 // Mounted at /api/:tenantId/finance behind requireAuth + requireTenant.
 const router = Router({ mergeParams: true });
@@ -208,13 +209,22 @@ router.get('/journals', requirePermission('finance.view'), asyncHandler(async (r
   res.json({ journals: await attachInvoiceNumbers(tid(req), journals) });
 }));
 
-/** Attach the linked invoice number to invoice-sourced journals (soft ref). */
+/** Attach the linked invoice number to invoice/payment-sourced journals (soft ref). */
 async function attachInvoiceNumbers<T extends { refType: string | null; refId: string | null }>(tenantId: string, journals: T[]) {
-  const invIds = [...new Set(journals.filter((j) => j.refType === 'invoice' && j.refId).map((j) => j.refId as string))];
-  if (invIds.length === 0) return journals.map((j) => ({ ...j, invoiceNumber: null as string | null }));
-  const invoices = await prisma.invoice.findMany({ where: { tenantId, id: { in: invIds } }, select: { id: true, invoiceNumber: true } });
-  const map = new Map(invoices.map((i) => [i.id, i.invoiceNumber]));
-  return journals.map((j) => ({ ...j, invoiceNumber: j.refType === 'invoice' && j.refId ? map.get(j.refId) ?? null : null }));
+  const invIds = journals.filter((j) => j.refType === 'invoice' && j.refId).map((j) => j.refId as string);
+  const payIds = journals.filter((j) => j.refType === 'payment' && j.refId).map((j) => j.refId as string);
+  if (invIds.length === 0 && payIds.length === 0) return journals.map((j) => ({ ...j, invoiceNumber: null as string | null }));
+  const [invoices, payments] = await Promise.all([
+    invIds.length ? prisma.invoice.findMany({ where: { tenantId, id: { in: [...new Set(invIds)] } }, select: { id: true, invoiceNumber: true } }) : Promise.resolve([]),
+    payIds.length ? prisma.payment.findMany({ where: { tenantId, id: { in: [...new Set(payIds)] } }, select: { id: true, invoice: { select: { invoiceNumber: true } } } }) : Promise.resolve([]),
+  ]);
+  const invMap = new Map(invoices.map((i) => [i.id, i.invoiceNumber]));
+  const payMap = new Map(payments.map((p) => [p.id, p.invoice?.invoiceNumber ?? null]));
+  return journals.map((j) => ({
+    ...j,
+    invoiceNumber: j.refType === 'invoice' && j.refId ? invMap.get(j.refId) ?? null
+      : j.refType === 'payment' && j.refId ? payMap.get(j.refId) ?? null : null,
+  }));
 }
 
 router.get('/journals/:id', requirePermission('finance.view'), asyncHandler(async (req, res) => {
@@ -237,6 +247,19 @@ router.post('/journals/from-invoice/:invoiceId', requirePermission('finance.crea
   if (!invoice) throw ApiError.notFound('فاکتور یافت نشد');
   const overrides = fromInvoiceSchema.parse(req.body ?? {});
   const posting = await createInvoiceJournal(tenantId, invoice, req.auth!.userId, overrides);
+  if (posting.status === 'skipped') throw ApiError.badRequest(posting.reason ?? 'ایجاد سند ممکن نشد');
+  const journal = posting.journalId ? await prisma.finJournal.findUnique({ where: { id: posting.journalId }, include: journalInclude }) : null;
+  res.status(posting.status === 'created' ? 201 : 200).json({ posting, journal });
+}));
+
+/** Generate a draft payment voucher from a payment (manual trigger / retry). */
+const fromPaymentSchema = z.object({ payableCode: z.string().optional(), cashCode: z.string().optional() }).optional();
+router.post('/journals/from-payment/:paymentId', requirePermission('finance.create'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const payment = await prisma.payment.findFirst({ where: { tenantId, id: req.params.paymentId }, include: { invoice: { include: { supplier: true } } } });
+  if (!payment) throw ApiError.notFound('پرداخت یافت نشد');
+  const overrides = fromPaymentSchema.parse(req.body ?? {});
+  const posting = await createPaymentJournal(tenantId, { id: payment.id, amount: payment.amount, paymentDate: payment.paymentDate, invoiceNumber: payment.invoice?.invoiceNumber ?? null, supplierName: payment.invoice?.supplier?.name ?? null }, req.auth!.userId, overrides);
   if (posting.status === 'skipped') throw ApiError.badRequest(posting.reason ?? 'ایجاد سند ممکن نشد');
   const journal = posting.journalId ? await prisma.finJournal.findUnique({ where: { id: posting.journalId }, include: journalInclude }) : null;
   res.status(posting.status === 'created' ? 201 : 200).json({ posting, journal });
@@ -334,6 +357,54 @@ router.post('/journals/:id/reverse', requirePermission('finance.create'), asyncH
     include: journalInclude,
   });
   res.status(201).json({ journal });
+}));
+
+// ── Accounts Payable subledger (AP) ──────────────────────────────────────────
+/** Per-supplier payable position derived from procurement invoices vs payments
+ *  (soft cross-module read). Gives Finance an AP aging/statement view without
+ *  putting supplier identity on the GL. */
+router.get('/payables', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const [invoices, payments] = await Promise.all([
+    prisma.invoice.findMany({ where: { tenantId }, select: { id: true, supplierId: true, totalAmount: true, dueDate: true, supplier: { select: { name: true } } } }),
+    prisma.payment.findMany({ where: { tenantId }, select: { amount: true, invoice: { select: { supplierId: true } } } }),
+  ]);
+  type Row = { supplierId: string; supplierName: string; invoiced: number; paid: number; outstanding: number; invoiceCount: number; overdue: number };
+  const bySupplier = new Map<string, Row>();
+  const now = new Date();
+  const keyOf = (sid: string | null) => sid ?? '—';
+  for (const inv of invoices) {
+    const k = keyOf(inv.supplierId);
+    const r = bySupplier.get(k) ?? { supplierId: k, supplierName: inv.supplier?.name ?? 'بدون تأمین‌کننده', invoiced: 0, paid: 0, outstanding: 0, invoiceCount: 0, overdue: 0 };
+    r.invoiced += Number(inv.totalAmount);
+    r.invoiceCount += 1;
+    bySupplier.set(k, r);
+  }
+  for (const p of payments) {
+    const k = keyOf(p.invoice?.supplierId ?? null);
+    const r = bySupplier.get(k);
+    if (r) r.paid += Number(p.amount);
+  }
+  // Overdue outstanding: unpaid portion on invoices past due (approximate at supplier level).
+  const paidBySupplier = new Map<string, number>();
+  for (const [k, r] of bySupplier) paidBySupplier.set(k, r.paid);
+  for (const inv of invoices) {
+    if (inv.dueDate && inv.dueDate < now) {
+      const k = keyOf(inv.supplierId);
+      const r = bySupplier.get(k);
+      if (r) {
+        // consume remaining paid credit against this overdue invoice
+        const remainingPaid = paidBySupplier.get(k) ?? 0;
+        const total = Number(inv.totalAmount);
+        const applied = Math.min(remainingPaid, total);
+        paidBySupplier.set(k, remainingPaid - applied);
+        r.overdue += Math.max(0, total - applied);
+      }
+    }
+  }
+  const rows = [...bySupplier.values()].map((r) => ({ ...r, outstanding: Math.max(0, r.invoiced - r.paid) })).filter((r) => r.invoiced > 0).sort((a, b) => b.outstanding - a.outstanding);
+  const totals = rows.reduce((t, r) => ({ invoiced: t.invoiced + r.invoiced, paid: t.paid + r.paid, outstanding: t.outstanding + r.outstanding }), { invoiced: 0, paid: 0, outstanding: 0 });
+  res.json({ rows, totals });
 }));
 
 // ── Reports ────────────────────────────────────────────────────────────────

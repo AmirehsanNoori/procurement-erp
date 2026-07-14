@@ -47,20 +47,24 @@ export function Payments() {
   const payMut = useMutation({
     mutationFn: async () => {
       const p = payFor!;
-      return api.post(`/${tid}/payments`, {
+      return (await api.post(`/${tid}/payments`, {
         invoiceId: p.inv.id,
         paymentDate: p.date || undefined,
         amount: Number(p.amount),
         paymentListNumber: p.listNumber || null,
         reference: p.reference || null,
         notes: p.notes || null,
-      });
+      })).data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['payments-schedule', tid] });
       qc.invalidateQueries({ queryKey: ['payments', tid] });
       qc.invalidateQueries({ queryKey: ['invoices', tid] });
       setPayFor(null);
+      // F3: report the auto-generated payment voucher.
+      const post = data?.posting;
+      if (post?.status === 'created') alert(`پرداخت ثبت شد. سند پرداخت پیش‌نویس شماره ${post.journalNumber} به‌صورت خودکار ایجاد شد.`);
+      else if (post?.status === 'skipped') alert(`پرداخت ثبت شد، اما سند حسابداری خودکار ایجاد نشد: ${post.reason ?? '—'}`);
     },
     onError: (e) => setPayErr(apiError(e)),
   });
