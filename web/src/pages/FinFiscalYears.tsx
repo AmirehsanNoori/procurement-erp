@@ -41,6 +41,12 @@ export function FinFiscalYears() {
     onError: (e) => setErr(apiError(e)),
   });
 
+  const reopen = useMutation({
+    mutationFn: async (id: string) => api.post(`/${tid}/finance/fiscal-years/${id}/reopen`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['fin-fiscal-years', tid] }); qc.invalidateQueries({ queryKey: ['fin-journals', tid] }); },
+    onError: (e) => setErr(apiError(e)),
+  });
+
   const canManage = can('finance.create');
   const canClose = can('finance.post');
 
@@ -65,7 +71,10 @@ export function FinFiscalYears() {
                   <td className="p-3 text-xs text-slate-500">{faDate(y.startDate)}</td>
                   <td className="p-3 text-xs text-slate-500">{faDate(y.endDate)}</td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs ${y.status === 'open' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{y.status === 'open' ? 'باز' : 'بسته'}</span></td>
-                  <td className="p-3">{y.status === 'open' && canClose && <button className="text-xs text-rose-600 hover:underline" disabled={close.isPending} onClick={() => { if (confirm(`بستن سال مالی «${y.title}»؟ این عمل قطعی است.`)) { setErr(''); close.mutate(y.id); } }}>بستن سال مالی</button>}</td>
+                  <td className="p-3">
+                    {y.status === 'open' && canClose && <button className="text-xs text-rose-600 hover:underline" disabled={close.isPending} onClick={() => { if (confirm(`بستن سال مالی «${y.title}»؟ این عمل قطعی است.`)) { setErr(''); close.mutate(y.id); } }}>بستن سال مالی</button>}
+                    {y.status === 'closed' && canClose && <button className="text-xs text-blue-600 hover:underline" disabled={reopen.isPending} onClick={() => { if (confirm(`بازگشایی سال مالی «${y.title}»؟ سند اختتامیه باطل می‌شود.`)) { setErr(''); reopen.mutate(y.id); } }}>بازگشایی</button>}
+                  </td>
                 </tr>
               ))}
             </tbody>

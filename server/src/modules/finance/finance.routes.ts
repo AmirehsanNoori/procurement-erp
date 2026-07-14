@@ -584,4 +584,19 @@ router.post('/fiscal-years/:id/close', requirePermission('finance.post'), asyncH
   res.status(201).json({ journal, netIncome: net });
 }));
 
+/** Reopen a closed fiscal year: void its closing entry and set status back to
+ *  open (for corrections). The closing entry stays as a void record. */
+router.post('/fiscal-years/:id/reopen', requirePermission('finance.post'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const fy = await prisma.finFiscalYear.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!fy) throw ApiError.notFound('سال مالی یافت نشد');
+  if (fy.status !== 'closed') throw ApiError.badRequest('این سال مالی بسته نیست');
+  await prisma.$transaction(async (tx) => {
+    await tx.finJournal.updateMany({ where: { tenantId, refModule: 'finance', refType: 'fiscal_close', refId: fy.id, status: 'posted' }, data: { status: 'void' } });
+    await tx.finFiscalYear.update({ where: { id: fy.id }, data: { status: 'open' } });
+  });
+  const fiscalYear = await prisma.finFiscalYear.findUnique({ where: { id: fy.id } });
+  res.json({ fiscalYear });
+}));
+
 export default router;
