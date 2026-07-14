@@ -28,6 +28,7 @@ describe('tenant module mounting (via Core registry)', () => {
       'correspondence',
       'expenses',
       'inventory',
+      'finance',
       'billing',
     ]);
   });

@@ -97,6 +97,18 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'financeGl',
+    title: 'مالی و حسابداری',
+    module: 'finance',
+    items: [
+      { key: 'finJournalEntry', path: '/finance/journals/new', label: 'ثبت سند', icon: '➕', permission: 'finance.create' },
+      { key: 'finJournals', path: '/finance/journals', label: 'دفتر روزنامه', icon: '📓', permission: 'finance.view' },
+      { key: 'finLedger', path: '/finance/ledger', label: 'دفتر کل', icon: '📗', permission: 'finance.view' },
+      { key: 'finTrialBalance', path: '/finance/trial-balance', label: 'تراز آزمایشی', icon: '⚖️', permission: 'finance.view' },
+      { key: 'finAccounts', path: '/finance/accounts', label: 'کدینگ حساب‌ها', icon: '🗂️', permission: 'finance.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',

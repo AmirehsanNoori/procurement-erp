@@ -35,6 +35,11 @@ import { InventoryWarehouses } from './pages/InventoryWarehouses';
 import { InventoryStock } from './pages/InventoryStock';
 import { InventoryReceipts } from './pages/InventoryReceipts';
 import { InventoryReceiptHistory } from './pages/InventoryReceiptHistory';
+import { FinAccounts } from './pages/FinAccounts';
+import { FinJournals } from './pages/FinJournals';
+import { FinJournalEntry } from './pages/FinJournalEntry';
+import { FinLedger } from './pages/FinLedger';
+import { FinTrialBalance } from './pages/FinTrialBalance';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -94,6 +99,14 @@ export default function App() {
         <Route path="/inventory/requests" element={<Guarded permission="warehouse.view"><Requests intakeSource="warehouse" /></Guarded>} />
         <Route path="/inventory/products" element={<Guarded permission="warehouse.view"><InventoryProducts /></Guarded>} />
         <Route path="/inventory/warehouses" element={<Guarded permission="warehouse.view"><InventoryWarehouses /></Guarded>} />
+
+        {/* Finance / General Ledger */}
+        <Route path="/finance/journals" element={<Guarded permission="finance.view"><FinJournals /></Guarded>} />
+        <Route path="/finance/journals/new" element={<Guarded permission="finance.create"><FinJournalEntry /></Guarded>} />
+        <Route path="/finance/journals/:id/edit" element={<Guarded permission="finance.edit"><FinJournalEntry /></Guarded>} />
+        <Route path="/finance/ledger" element={<Guarded permission="finance.view"><FinLedger /></Guarded>} />
+        <Route path="/finance/trial-balance" element={<Guarded permission="finance.view"><FinTrialBalance /></Guarded>} />
+        <Route path="/finance/accounts" element={<Guarded permission="finance.view"><FinAccounts /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

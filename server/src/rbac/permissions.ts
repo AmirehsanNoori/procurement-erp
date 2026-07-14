@@ -34,6 +34,7 @@ export const MODULES = {
   expenses: 'expenses',
   billing: 'billing',
   warehouse: 'warehouse',
+  finance: 'finance',
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -62,6 +63,8 @@ export const ACTIONS = [
   'issue',
   'transfer',
   'adjust',
+  'post',
+  'void',
 ] as const;
 
 export type ActionKey = (typeof ACTIONS)[number];
@@ -99,6 +102,7 @@ export const MODULE_ACTIONS: Record<ModuleKey, ActionKey[]> = {
   expenses: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
   billing: ['view', 'manage'],
   warehouse: ['view', 'create', 'edit', 'delete', 'receive', 'issue', 'transfer', 'adjust', 'export'],
+  finance: ['view', 'create', 'edit', 'delete', 'post', 'void', 'export'],
 };
 
 export interface PermissionDef {
@@ -132,6 +136,8 @@ const ACTION_FA: Record<ActionKey, string> = {
   issue: 'حواله',
   transfer: 'انتقال',
   adjust: 'اصلاح موجودی',
+  post: 'ثبت قطعی',
+  void: 'ابطال',
 };
 
 export const MODULE_FA: Record<ModuleKey, string> = {
@@ -163,6 +169,7 @@ export const MODULE_FA: Record<ModuleKey, string> = {
   expenses: 'گزارش‌های هزینه',
   billing: 'اشتراک و صورت‌حساب',
   warehouse: 'انبار',
+  finance: 'مالی و حسابداری',
 };
 
 /** Flat list of all permission definitions, derived from MODULE_ACTIONS. */

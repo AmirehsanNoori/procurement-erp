@@ -62,6 +62,10 @@ model Tenant {
   stockMovements        StockMovement[]
   stockLevels           StockLevel[]
   goodsReceipts         GoodsReceipt[]
+  finAccounts           FinAccount[]
+  finFiscalYears        FinFiscalYear[]
+  finJournals           FinJournal[]
+  finJournalLines       FinJournalLine[]
 
   @@map("tenants")
 }
@@ -214,6 +218,104 @@ model TenantModule {
   @@unique([tenantId, moduleKey])
   @@index([tenantId])
   @@map("tenant_modules")
+}
+
+// ── Finance module (General Ledger) ──────────────────────────────────────────
+// Double-entry accounting. Chart of accounts is a tree; only postable (leaf)
+// accounts accept journal lines. Journals must balance (Σdebit = Σcredit).
+// Cross-module links to procurement (invoice/payment) use soft references.
+
+/// A node in the chart of accounts (کدینگ حساب‌ها). Tree via parentId.
+model FinAccount {
+  id         String   @id @default(cuid())
+  tenantId   String
+  code       String // account code, unique per tenant
+  name       String
+  type       String // asset | liability | equity | income | expense
+  parentId   String?
+  level      Int      @default(1)
+  isPostable Boolean  @default(true) // only leaf/معین accounts accept journal lines
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   FinAccount?      @relation("FinAccountTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children FinAccount[]     @relation("FinAccountTree")
+  lines    FinJournalLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([parentId])
+  @@map("fin_accounts")
+}
+
+/// Fiscal year (سال مالی). Journals are dated inside an open year.
+model FinFiscalYear {
+  id        String   @id @default(cuid())
+  tenantId  String
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("open") // open | closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journals FinJournal[]
+
+  @@index([tenantId])
+  @@map("fin_fiscal_years")
+}
+
+/// Accounting document header (سند حسابداری). Posted docs are immutable —
+/// corrections are made by voiding or a reversing entry.
+model FinJournal {
+  id           String    @id @default(cuid())
+  tenantId     String
+  number       Int // sequential per tenant
+  date         DateTime
+  description  String?
+  status       String    @default("draft") // draft | posted | void
+  fiscalYearId String?
+  refModule    String? // soft cross-module reference (ADR-0009), e.g. 'procurement'
+  refType      String? // 'invoice' | 'payment'
+  refId        String?
+  reversalOfId String? // if this doc reverses another
+  postedAt     DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fiscalYear FinFiscalYear?   @relation(fields: [fiscalYearId], references: [id], onDelete: SetNull)
+  lines      FinJournalLine[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@index([refId])
+  @@map("fin_journals")
+}
+
+/// A single line of a journal (آرتیکل). Exactly one of debit/credit is > 0.
+model FinJournalLine {
+  id          String  @id @default(cuid())
+  tenantId    String
+  journalId   String
+  accountId   String
+  debit       Decimal @default(0) @db.Decimal(18, 2)
+  credit      Decimal @default(0) @db.Decimal(18, 2)
+  description String?
+  sortOrder   Int     @default(0)
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journal FinJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account FinAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([journalId])
+  @@index([accountId])
+  @@map("fin_journal_lines")
 }
 
 model BillingInvoice {

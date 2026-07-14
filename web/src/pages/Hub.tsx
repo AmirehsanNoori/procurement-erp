@@ -41,7 +41,7 @@ const MODULES: HubModule[] = [
   },
   { key: 'warehouse', title: 'انبار', icon: '🏬', desc: 'موجودی، رسید و حواله، انبارها و گردش کالا', accent: 'from-amber-500 to-orange-600', entries: [['warehouse.view', '/inventory/stock']] },
   { key: 'contracts', title: 'قراردادها', icon: '📑', desc: 'چرخهٔ عمر قرارداد، متمم، ضمانت‌نامه، سررسید و تمدید', accent: 'from-emerald-500 to-teal-600', soon: true },
-  { key: 'finance', title: 'مالی', icon: '💰', desc: 'پرداخت تأمین‌کننده، مراکز هزینه، کنترل بودجه و گزارش مالی', accent: 'from-rose-500 to-pink-600', soon: true },
+  { key: 'finance', title: 'مالی و حسابداری', icon: '💰', desc: 'کدینگ حساب‌ها، سند حسابداری دوطرفه، دفتر کل و تراز آزمایشی', accent: 'from-rose-500 to-pink-600', entries: [['finance.view', '/finance/journals']] },
   { key: 'hr', title: 'منابع انسانی', icon: '👥', desc: 'پرسنل، حضور و غیاب و امور اداری کارکنان', accent: 'from-violet-500 to-purple-600', soon: true },
   { key: 'ticketing', title: 'تیکتینگ / IT', icon: '🎫', desc: 'پشتیبانی، درخواست‌های فنی و پیگیری', accent: 'from-cyan-500 to-sky-600', soon: true },
   { key: 'office', title: 'اتوماسیون اداری', icon: '✉️', desc: 'نامه‌نگاری، دبیرخانه، جلسات و آموزش', accent: 'from-slate-500 to-slate-700', soon: true },
