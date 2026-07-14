@@ -324,6 +324,9 @@ router.post('/journals/:id/post', requirePermission('finance.post'), asyncHandle
   if (!existing) throw ApiError.notFound('سند یافت نشد');
   if (existing.status === 'posted') throw ApiError.badRequest('سند قبلاً قطعی شده است');
   if (existing.status === 'void') throw ApiError.badRequest('سند باطل‌شده قابل قطعی‌سازی نیست');
+  // Cannot post into a closed fiscal year.
+  const closed = await prisma.finFiscalYear.findFirst({ where: { tenantId, status: 'closed', startDate: { lte: existing.date }, endDate: { gte: existing.date } } });
+  if (closed) throw ApiError.badRequest(`سال مالی «${closed.title}» بسته شده و امکان ثبت سند در این بازه وجود ندارد`);
   // Re-validate balance at post time (defence in depth).
   await validateLines(tenantId, existing.lines.map((l) => ({ accountId: l.accountId, debit: Number(l.debit), credit: Number(l.credit), description: l.description })));
   const journal = await prisma.finJournal.update({ where: { id: existing.id }, data: { status: 'posted', postedAt: new Date() }, include: journalInclude });
@@ -465,6 +468,120 @@ router.get('/trial-balance', requirePermission('finance.view'), asyncHandler(asy
     });
   const totals = rows.reduce((t, r) => ({ debit: round2(t.debit + r.debit), credit: round2(t.credit + r.credit) }), { debit: 0, credit: 0 });
   res.json({ rows, totals });
+}));
+
+// ── Financial statements (F4) ────────────────────────────────────────────────
+/** Sum debit/credit per account over posted journals (optional date window). */
+async function postedSums(tenantId: string, from: Date | null, to: Date | null) {
+  const grouped = await prisma.finJournalLine.groupBy({
+    by: ['accountId'],
+    where: { tenantId, journal: { status: 'posted', ...(from || to ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}) } },
+    _sum: { debit: true, credit: true },
+  });
+  return new Map(grouped.map((g) => [g.accountId, { debit: Number(g._sum.debit ?? 0), credit: Number(g._sum.credit ?? 0) }]));
+}
+
+/** Income statement (سود و زیان) for a period: revenue − expenses = net income. */
+router.get('/income-statement', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const from = req.query.from ? new Date(req.query.from as string) : null;
+  const to = req.query.to ? new Date(req.query.to as string) : null;
+  const sums = await postedSums(tenantId, from, to);
+  const accounts = await prisma.finAccount.findMany({ where: { tenantId, type: { in: ['income', 'expense'] } }, orderBy: { code: 'asc' } });
+  const income: { code: string; name: string; amount: number }[] = [];
+  const expense: { code: string; name: string; amount: number }[] = [];
+  for (const a of accounts) {
+    const s = sums.get(a.id);
+    if (!s) continue;
+    if (a.type === 'income') { const bal = round2(s.credit - s.debit); if (bal !== 0) income.push({ code: a.code, name: a.name, amount: bal }); }
+    else { const bal = round2(s.debit - s.credit); if (bal !== 0) expense.push({ code: a.code, name: a.name, amount: bal }); }
+  }
+  const totalIncome = round2(income.reduce((s, r) => s + r.amount, 0));
+  const totalExpense = round2(expense.reduce((s, r) => s + r.amount, 0));
+  res.json({ income, expense, totalIncome, totalExpense, netIncome: round2(totalIncome - totalExpense) });
+}));
+
+/** Balance sheet (ترازنامه) as of a date: assets = liabilities + equity. */
+router.get('/balance-sheet', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const asOf = req.query.asOf ? new Date(req.query.asOf as string) : null;
+  const sums = await postedSums(tenantId, null, asOf);
+  const accounts = await prisma.finAccount.findMany({ where: { tenantId }, orderBy: { code: 'asc' } });
+  const assets: { code: string; name: string; amount: number }[] = [];
+  const liabilities: { code: string; name: string; amount: number }[] = [];
+  const equity: { code: string; name: string; amount: number }[] = [];
+  let incomeTotal = 0, expenseTotal = 0;
+  for (const a of accounts) {
+    const s = sums.get(a.id);
+    if (!s) continue;
+    if (a.type === 'asset') { const bal = round2(s.debit - s.credit); if (bal !== 0) assets.push({ code: a.code, name: a.name, amount: bal }); }
+    else if (a.type === 'liability') { const bal = round2(s.credit - s.debit); if (bal !== 0) liabilities.push({ code: a.code, name: a.name, amount: bal }); }
+    else if (a.type === 'equity') { const bal = round2(s.credit - s.debit); if (bal !== 0) equity.push({ code: a.code, name: a.name, amount: bal }); }
+    else if (a.type === 'income') incomeTotal += s.credit - s.debit;
+    else if (a.type === 'expense') expenseTotal += s.debit - s.credit;
+  }
+  // Un-closed current-period net income folds into equity (retained earnings).
+  const retainedEarnings = round2(incomeTotal - expenseTotal);
+  const totalAssets = round2(assets.reduce((s, r) => s + r.amount, 0));
+  const totalLiabilities = round2(liabilities.reduce((s, r) => s + r.amount, 0));
+  const totalEquity = round2(equity.reduce((s, r) => s + r.amount, 0) + retainedEarnings);
+  res.json({ assets, liabilities, equity, retainedEarnings, totalAssets, totalLiabilities, totalEquity, balanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01 });
+}));
+
+/** Cash position (نقدینگی): balance of each cash/bank account (codes under 1001). */
+router.get('/cash-position', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const sums = await postedSums(tenantId, null, null);
+  const accounts = await prisma.finAccount.findMany({ where: { tenantId, isPostable: true, code: { startsWith: '1001' } }, orderBy: { code: 'asc' } });
+  const rows = accounts.map((a) => { const s = sums.get(a.id) ?? { debit: 0, credit: 0 }; return { code: a.code, name: a.name, balance: round2(s.debit - s.credit) }; });
+  res.json({ rows, total: round2(rows.reduce((s, r) => s + r.balance, 0)) });
+}));
+
+/** Close a fiscal year: post a closing entry that zeroes income/expense accounts
+ *  into retained earnings, then mark the year closed. */
+router.post('/fiscal-years/:id/close', requirePermission('finance.post'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const fy = await prisma.finFiscalYear.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!fy) throw ApiError.notFound('سال مالی یافت نشد');
+  if (fy.status !== 'open') throw ApiError.badRequest('این سال مالی باز نیست');
+  const retained = await prisma.finAccount.findFirst({ where: { tenantId, code: '300201', isActive: true, isPostable: true } });
+  if (!retained) throw ApiError.badRequest('حساب «سود (زیان) انباشته» با کد ۳۰۰۲۰۱ در کدینگ یافت نشد');
+  const sums = await postedSums(tenantId, fy.startDate, fy.endDate);
+  const accounts = await prisma.finAccount.findMany({ where: { tenantId, type: { in: ['income', 'expense'] } }, orderBy: { code: 'asc' } });
+  const lines: { accountId: string; debit: number; credit: number; description: string; sortOrder: number }[] = [];
+  let sort = 0, incomeTotal = 0, expenseTotal = 0;
+  for (const a of accounts) {
+    const s = sums.get(a.id);
+    if (!s) continue;
+    if (a.type === 'income') {
+      const bal = round2(s.credit - s.debit); // credit-normal
+      if (bal > 0) { lines.push({ accountId: a.id, debit: bal, credit: 0, description: 'بستن حساب درآمد', sortOrder: sort++ }); incomeTotal += bal; }
+      else if (bal < 0) { lines.push({ accountId: a.id, debit: 0, credit: -bal, description: 'بستن حساب درآمد', sortOrder: sort++ }); incomeTotal += bal; }
+    } else {
+      const bal = round2(s.debit - s.credit); // debit-normal
+      if (bal > 0) { lines.push({ accountId: a.id, debit: 0, credit: bal, description: 'بستن حساب هزینه', sortOrder: sort++ }); expenseTotal += bal; }
+      else if (bal < 0) { lines.push({ accountId: a.id, debit: -bal, credit: 0, description: 'بستن حساب هزینه', sortOrder: sort++ }); expenseTotal += bal; }
+    }
+  }
+  if (lines.length === 0) throw ApiError.badRequest('گردشی برای بستن در این سال مالی وجود ندارد');
+  const net = round2(incomeTotal - expenseTotal);
+  if (net > 0) lines.push({ accountId: retained.id, debit: 0, credit: net, description: 'انتقال سود دوره به انباشته', sortOrder: sort++ });
+  else if (net < 0) lines.push({ accountId: retained.id, debit: -net, credit: 0, description: 'انتقال زیان دوره به انباشته', sortOrder: sort++ });
+  const number = await nextJournalNumber(tenantId);
+  const journal = await prisma.$transaction(async (tx) => {
+    const j = await tx.finJournal.create({
+      data: {
+        tenantId, number, date: fy.endDate, status: 'posted', postedAt: new Date(),
+        description: `سند اختتامیه ${fy.title}`, fiscalYearId: fy.id,
+        refModule: 'finance', refType: 'fiscal_close', refId: fy.id, createdById: req.auth!.userId,
+        lines: { create: lines.map((l) => ({ tenantId, accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description, sortOrder: l.sortOrder })) },
+      },
+      include: journalInclude,
+    });
+    await tx.finFiscalYear.update({ where: { id: fy.id }, data: { status: 'closed' } });
+    return j;
+  });
+  res.status(201).json({ journal, netIncome: net });
 }));
 
 export default router;

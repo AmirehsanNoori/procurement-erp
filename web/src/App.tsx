@@ -41,6 +41,9 @@ import { FinJournalEntry } from './pages/FinJournalEntry';
 import { FinLedger } from './pages/FinLedger';
 import { FinTrialBalance } from './pages/FinTrialBalance';
 import { FinPayables } from './pages/FinPayables';
+import { FinStatements } from './pages/FinStatements';
+import { FinCashPosition } from './pages/FinCashPosition';
+import { FinFiscalYears } from './pages/FinFiscalYears';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -108,6 +111,9 @@ export default function App() {
         <Route path="/finance/ledger" element={<Guarded permission="finance.view"><FinLedger /></Guarded>} />
         <Route path="/finance/trial-balance" element={<Guarded permission="finance.view"><FinTrialBalance /></Guarded>} />
         <Route path="/finance/payables" element={<Guarded permission="finance.view"><FinPayables /></Guarded>} />
+        <Route path="/finance/statements" element={<Guarded permission="finance.view"><FinStatements /></Guarded>} />
+        <Route path="/finance/cash-position" element={<Guarded permission="finance.view"><FinCashPosition /></Guarded>} />
+        <Route path="/finance/fiscal-years" element={<Guarded permission="finance.view"><FinFiscalYears /></Guarded>} />
         <Route path="/finance/accounts" element={<Guarded permission="finance.view"><FinAccounts /></Guarded>} />
 
         {/* System */}
