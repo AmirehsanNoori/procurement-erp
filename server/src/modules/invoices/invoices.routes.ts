@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { INVOICE_STATUS, loadFinance } from '../finance/calc';
+import { createInvoiceJournal } from '../finance/invoice-posting';
 import { recalcInvoiceStatus } from './service';
 import { parsePagination, buildMeta } from '../../lib/paginate';
 import { searchTerms } from '../../lib/search';
@@ -313,11 +314,24 @@ router.post(
     const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, tenantId } });
     if (!existing) throw ApiError.notFound('فاکتور یافت نشد');
     if (!existing.receivedAt) throw ApiError.badRequest('ابتدا باید رسید انبار ثبت شود');
-    const invoice = await prisma.invoice.update({
+    await prisma.invoice.update({
       where: { id: existing.id },
       data: { sentToFinanceAt: existing.sentToFinanceAt ?? new Date(), sentToAccounting: true, updatedById: req.auth!.userId },
     });
-    res.json({ invoice });
+    // F2: auto-generate a draft accounting voucher (fail-open — never block handoff).
+    const invoice = await prisma.invoice.findUnique({ where: { id: existing.id }, include: { supplier: true } });
+    let posting: Awaited<ReturnType<typeof createInvoiceJournal>> = { status: 'skipped', reason: 'خطای داخلی' };
+    try {
+      posting = await createInvoiceJournal(tenantId, invoice!, req.auth!.userId);
+      if (posting.status === 'created') {
+        await prisma.notification.create({
+          data: { tenantId, type: 'finance', level: 'important', title: `سند حسابداری پیش‌نویس شماره ${posting.journalNumber} برای فاکتور ${invoice!.invoiceNumber} ایجاد شد`, entityType: 'finance_journal', entityId: posting.journalId! },
+        }).catch(() => undefined);
+      }
+    } catch {
+      posting = { status: 'skipped', reason: 'ایجاد سند حسابداری ناموفق بود' };
+    }
+    res.json({ invoice, posting });
   })
 );
 

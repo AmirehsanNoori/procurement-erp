@@ -149,8 +149,17 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   });
 
   const handoffMut = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: 'send-to-warehouse' | 'send-to-finance' }) => api.post(`/${tid}/invoices/${id}/${action}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices', tid] }),
+    mutationFn: async ({ id, action }: { id: string; action: 'send-to-warehouse' | 'send-to-finance' }) => (await api.post(`/${tid}/invoices/${id}/${action}`)).data,
+    onSuccess: (data, vars) => {
+      qc.invalidateQueries({ queryKey: ['invoices', tid] });
+      // F2: report the auto-generated accounting voucher (or why it was skipped).
+      if (vars.action === 'send-to-finance' && data?.posting) {
+        const p = data.posting;
+        if (p.status === 'created') alert(`ارسال به مالی انجام شد. سند حسابداری پیش‌نویس شماره ${p.journalNumber} به‌صورت خودکار ایجاد شد.`);
+        else if (p.status === 'exists') alert('ارسال به مالی انجام شد. سند حسابداری این فاکتور قبلاً ایجاد شده بود.');
+        else if (p.status === 'skipped') alert(`ارسال به مالی انجام شد، اما سند حسابداری خودکار ایجاد نشد: ${p.reason ?? '—'}`);
+      }
+    },
     onError: (e) => alert(apiError(e)),
   });
 

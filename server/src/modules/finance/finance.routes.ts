@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { IRANIAN_COA, levelOfCode, AccountType } from './coa-seed';
+import { createInvoiceJournal } from './invoice-posting';
 
 // Mounted at /api/:tenantId/finance behind requireAuth + requireTenant.
 const router = Router({ mergeParams: true });
@@ -204,13 +205,41 @@ router.get('/journals', requirePermission('finance.view'), asyncHandler(async (r
     ...(status && ['draft', 'posted', 'void'].includes(status) ? { status } : {}),
   };
   const journals = await prisma.finJournal.findMany({ where, include: journalInclude, orderBy: { number: 'desc' }, take: 300 });
-  res.json({ journals });
+  res.json({ journals: await attachInvoiceNumbers(tid(req), journals) });
 }));
+
+/** Attach the linked invoice number to invoice-sourced journals (soft ref). */
+async function attachInvoiceNumbers<T extends { refType: string | null; refId: string | null }>(tenantId: string, journals: T[]) {
+  const invIds = [...new Set(journals.filter((j) => j.refType === 'invoice' && j.refId).map((j) => j.refId as string))];
+  if (invIds.length === 0) return journals.map((j) => ({ ...j, invoiceNumber: null as string | null }));
+  const invoices = await prisma.invoice.findMany({ where: { tenantId, id: { in: invIds } }, select: { id: true, invoiceNumber: true } });
+  const map = new Map(invoices.map((i) => [i.id, i.invoiceNumber]));
+  return journals.map((j) => ({ ...j, invoiceNumber: j.refType === 'invoice' && j.refId ? map.get(j.refId) ?? null : null }));
+}
 
 router.get('/journals/:id', requirePermission('finance.view'), asyncHandler(async (req, res) => {
   const journal = await prisma.finJournal.findFirst({ where: { tenantId: tid(req), id: req.params.id }, include: journalInclude });
   if (!journal) throw ApiError.notFound('سند یافت نشد');
   res.json({ journal });
+}));
+
+/** Generate a draft voucher from a procurement invoice (manual trigger / retry).
+ *  Used when the auto-posting at send-to-finance was skipped (e.g. chart of
+ *  accounts not ready). Idempotent — returns the existing voucher if present. */
+const fromInvoiceSchema = z.object({
+  inventoryCode: z.string().optional(),
+  inputVatCode: z.string().optional(),
+  payableCode: z.string().optional(),
+}).optional();
+router.post('/journals/from-invoice/:invoiceId', requirePermission('finance.create'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const invoice = await prisma.invoice.findFirst({ where: { tenantId, id: req.params.invoiceId }, include: { supplier: true } });
+  if (!invoice) throw ApiError.notFound('فاکتور یافت نشد');
+  const overrides = fromInvoiceSchema.parse(req.body ?? {});
+  const posting = await createInvoiceJournal(tenantId, invoice, req.auth!.userId, overrides);
+  if (posting.status === 'skipped') throw ApiError.badRequest(posting.reason ?? 'ایجاد سند ممکن نشد');
+  const journal = posting.journalId ? await prisma.finJournal.findUnique({ where: { id: posting.journalId }, include: journalInclude }) : null;
+  res.status(posting.status === 'created' ? 201 : 200).json({ posting, journal });
 }));
 
 router.post('/journals', requirePermission('finance.create'), validate(journalSchema), asyncHandler(async (req, res) => {

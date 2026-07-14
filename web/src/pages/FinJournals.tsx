@@ -9,7 +9,7 @@ import { faDate, faMoney } from '../lib/format';
 interface Line { id: string; debit: string; credit: string; description: string | null; account: { code: string; name: string }; }
 interface Journal {
   id: string; number: number; date: string; description: string | null; status: string;
-  postedAt: string | null; lines: Line[];
+  postedAt: string | null; lines: Line[]; refType: string | null; invoiceNumber: string | null;
 }
 const STATUS_FA: Record<string, string> = { draft: 'پیش‌نویس', posted: 'قطعی', void: 'باطل' };
 const STATUS_COLOR: Record<string, string> = { draft: 'bg-slate-100 text-slate-600', posted: 'bg-emerald-50 text-emerald-700', void: 'bg-rose-50 text-rose-600 line-through' };
@@ -64,7 +64,10 @@ export function FinJournals() {
                   <tr className="border-t border-slate-100 hover:bg-slate-50">
                     <td className="p-3 font-bold">{j.number}</td>
                     <td className="p-3 text-xs text-slate-500">{faDate(j.date)}</td>
-                    <td className="p-3">{j.description ?? '—'}</td>
+                    <td className="p-3">
+                      {j.description ?? '—'}
+                      {j.refType === 'invoice' && j.invoiceNumber && <span className="mr-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">از فاکتور {j.invoiceNumber}</span>}
+                    </td>
                     <td className="p-3 tabular-nums">{faMoney(lineTotal(j))}</td>
                     <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[j.status]}`}>{STATUS_FA[j.status]}</span></td>
                     <td className="p-3">
