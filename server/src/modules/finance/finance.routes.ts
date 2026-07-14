@@ -283,6 +283,17 @@ router.patch('/journals/:id', requirePermission('finance.edit'), validate(journa
   res.json({ journal });
 }));
 
+/** Delete a draft journal. Only drafts can be deleted; posted/void are kept for
+ *  the audit trail (correct a posted doc via void or a reversing entry). */
+router.delete('/journals/:id', requirePermission('finance.delete'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const existing = await prisma.finJournal.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!existing) throw ApiError.notFound('سند یافت نشد');
+  if (existing.status !== 'draft') throw ApiError.badRequest('فقط اسناد پیش‌نویس قابل حذف هستند؛ سند قطعی را باطل کنید');
+  await prisma.finJournal.delete({ where: { id: existing.id } });
+  res.json({ ok: true });
+}));
+
 /** Post a draft: makes it immutable and effective in the ledger. */
 router.post('/journals/:id/post', requirePermission('finance.post'), asyncHandler(async (req, res) => {
   const tenantId = tid(req);

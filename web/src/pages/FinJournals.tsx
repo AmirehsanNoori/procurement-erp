@@ -34,10 +34,16 @@ export function FinJournals() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['fin-journals', tid] }),
     onError: (e) => setErr(apiError(e)),
   });
+  const del = useMutation({
+    mutationFn: async (id: string) => api.delete(`/${tid}/finance/journals/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fin-journals', tid] }),
+    onError: (e) => setErr(apiError(e)),
+  });
 
   const canPost = can('finance.post');
   const canVoid = can('finance.void');
   const canCreate = can('finance.create');
+  const canDelete = can('finance.delete');
   const lineTotal = (j: Journal) => j.lines.reduce((s, l) => s + Number(l.debit), 0);
 
   return (
@@ -77,6 +83,7 @@ export function FinJournals() {
                         {j.status === 'draft' && canPost && <button className="text-emerald-600 hover:underline" disabled={act.isPending} onClick={() => { setErr(''); act.mutate({ id: j.id, action: 'post' }); }}>قطعی کردن</button>}
                         {j.status === 'posted' && canVoid && <button className="text-rose-600 hover:underline" disabled={act.isPending} onClick={() => { setErr(''); act.mutate({ id: j.id, action: 'void' }); }}>ابطال</button>}
                         {j.status === 'posted' && canCreate && <button className="text-amber-600 hover:underline" disabled={act.isPending} onClick={() => { setErr(''); act.mutate({ id: j.id, action: 'reverse' }); }}>سند برگشت</button>}
+                        {j.status === 'draft' && canDelete && <button className="text-rose-500 hover:underline" disabled={del.isPending} onClick={() => { if (confirm('حذف سند پیش‌نویس؟')) { setErr(''); del.mutate(j.id); } }}>حذف</button>}
                       </div>
                     </td>
                   </tr>
