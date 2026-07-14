@@ -599,4 +599,76 @@ router.post('/fiscal-years/:id/reopen', requirePermission('finance.post'), async
   res.json({ fiscalYear });
 }));
 
+// ── Budgeting: budget vs actual (F5) ─────────────────────────────────────────
+const budgetSchema = z.object({
+  accountId: z.string().min(1),
+  fiscalYearId: z.string().min(1),
+  amount: z.coerce.number().min(0),
+  note: z.string().optional().nullable(),
+});
+
+router.get('/budgets', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const fiscalYearId = req.query.fiscalYearId as string | undefined;
+  const budgets = await prisma.finBudget.findMany({
+    where: { tenantId, ...(fiscalYearId ? { fiscalYearId } : {}) },
+    include: { account: { select: { code: true, name: true, type: true } } },
+    orderBy: { account: { code: 'asc' } },
+  });
+  res.json({ budgets });
+}));
+
+/** Upsert a budget line for an account within a fiscal year. */
+router.post('/budgets', requirePermission('finance.create'), validate(budgetSchema), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const body = req.body as z.infer<typeof budgetSchema>;
+  const account = await prisma.finAccount.findFirst({ where: { tenantId, id: body.accountId } });
+  if (!account) throw ApiError.badRequest('حساب نامعتبر است');
+  if (!account.isPostable) throw ApiError.badRequest('بودجه فقط برای حساب‌های معین قابل تعریف است');
+  const fy = await prisma.finFiscalYear.findFirst({ where: { tenantId, id: body.fiscalYearId } });
+  if (!fy) throw ApiError.badRequest('سال مالی نامعتبر است');
+  const budget = await prisma.finBudget.upsert({
+    where: { tenantId_accountId_fiscalYearId: { tenantId, accountId: body.accountId, fiscalYearId: body.fiscalYearId } },
+    create: { tenantId, accountId: body.accountId, fiscalYearId: body.fiscalYearId, amount: body.amount, note: body.note ?? null },
+    update: { amount: body.amount, note: body.note ?? null },
+    include: { account: { select: { code: true, name: true, type: true } } },
+  });
+  res.status(201).json({ budget });
+}));
+
+router.delete('/budgets/:id', requirePermission('finance.delete'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const existing = await prisma.finBudget.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!existing) throw ApiError.notFound('بودجه یافت نشد');
+  await prisma.finBudget.delete({ where: { id: existing.id } });
+  res.json({ ok: true });
+}));
+
+/** Budget vs actual for a fiscal year: budgeted amount vs posted actuals,
+ *  with variance and utilisation per account. */
+router.get('/budget-vs-actual', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const fiscalYearId = req.query.fiscalYearId as string | undefined;
+  if (!fiscalYearId) throw ApiError.badRequest('سال مالی الزامی است');
+  const fy = await prisma.finFiscalYear.findFirst({ where: { tenantId, id: fiscalYearId } });
+  if (!fy) throw ApiError.notFound('سال مالی یافت نشد');
+  const [budgets, sums] = await Promise.all([
+    prisma.finBudget.findMany({ where: { tenantId, fiscalYearId }, include: { account: { select: { code: true, name: true, type: true } } }, orderBy: { account: { code: 'asc' } } }),
+    postedSums(tenantId, fy.startDate, fy.endDate),
+  ]);
+  const rows = budgets.map((b) => {
+    const s = sums.get(b.accountId) ?? { debit: 0, credit: 0 };
+    // Actual in the account's natural direction (expense/asset debit-normal, income/liability credit-normal).
+    const actual = b.account.type === 'income' || b.account.type === 'liability' || b.account.type === 'equity'
+      ? round2(s.credit - s.debit)
+      : round2(s.debit - s.credit);
+    const budget = round2(Number(b.amount));
+    const variance = round2(budget - actual);
+    const usedPct = budget > 0 ? Math.round((actual / budget) * 100) : (actual > 0 ? 100 : 0);
+    return { id: b.id, accountId: b.accountId, code: b.account.code, name: b.account.name, type: b.account.type as AccountType, budget, actual, variance, usedPct };
+  });
+  const totals = rows.reduce((t, r) => ({ budget: round2(t.budget + r.budget), actual: round2(t.actual + r.actual), variance: round2(t.variance + r.variance) }), { budget: 0, actual: 0, variance: 0 });
+  res.json({ fiscalYear: fy, rows, totals });
+}));
+
 export default router;

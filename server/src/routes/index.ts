@@ -31,10 +31,35 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
+import { prisma } from '../lib/prisma';
+import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
+// TEMPORARY: create the fin_budgets table (F5) on the build-unreachable Supabase
+// DB via app runtime. Super-admin only; idempotent. Remove after use.
+router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
+  const stmts = [
+    `CREATE TABLE IF NOT EXISTS "fin_budgets" (
+      "id" TEXT PRIMARY KEY,
+      "tenantId" TEXT NOT NULL,
+      "accountId" TEXT NOT NULL,
+      "fiscalYearId" TEXT NOT NULL,
+      "amount" DECIMAL(18,2) NOT NULL,
+      "note" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "fin_budgets_tenantId_accountId_fiscalYearId_key" ON "fin_budgets" ("tenantId", "accountId", "fiscalYearId");`,
+    `CREATE INDEX IF NOT EXISTS "fin_budgets_tenantId_idx" ON "fin_budgets" ("tenantId");`,
+    `CREATE INDEX IF NOT EXISTS "fin_budgets_fiscalYearId_idx" ON "fin_budgets" ("fiscalYearId");`,
+  ];
+  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
+  res.json({ ok: true, applied: 'fin_budgets' });
+}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);

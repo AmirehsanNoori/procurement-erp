@@ -108,6 +108,7 @@ export const NAV: NavGroup[] = [
       { key: 'finStatements', path: '/finance/statements', label: 'صورت‌های مالی', icon: '📊', permission: 'finance.view' },
       { key: 'finCash', path: '/finance/cash-position', label: 'نقدینگی', icon: '🏦', permission: 'finance.view' },
       { key: 'finPayables', path: '/finance/payables', label: 'حساب‌های پرداختنی', icon: '💳', permission: 'finance.view' },
+      { key: 'finBudgets', path: '/finance/budgets', label: 'بودجه و عملکرد', icon: '🎯', permission: 'finance.view' },
       { key: 'finFiscalYears', path: '/finance/fiscal-years', label: 'سال مالی', icon: '📅', permission: 'finance.view' },
       { key: 'finAccounts', path: '/finance/accounts', label: 'کدینگ حساب‌ها', icon: '🗂️', permission: 'finance.view' },
     ],

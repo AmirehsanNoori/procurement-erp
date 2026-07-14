@@ -66,6 +66,7 @@ model Tenant {
   finFiscalYears        FinFiscalYear[]
   finJournals           FinJournal[]
   finJournalLines       FinJournalLine[]
+  finBudgets            FinBudget[]
 
   @@map("tenants")
 }
@@ -243,11 +244,33 @@ model FinAccount {
   parent   FinAccount?      @relation("FinAccountTree", fields: [parentId], references: [id], onDelete: SetNull)
   children FinAccount[]     @relation("FinAccountTree")
   lines    FinJournalLine[]
+  budgets  FinBudget[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@index([parentId])
   @@map("fin_accounts")
+}
+
+/// Per-account budget for a fiscal year (بودجه). Compared against posted actuals.
+model FinBudget {
+  id           String   @id @default(cuid())
+  tenantId     String
+  accountId    String
+  fiscalYearId String
+  amount       Decimal  @db.Decimal(18, 2)
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account    FinAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  fiscalYear FinFiscalYear @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, accountId, fiscalYearId])
+  @@index([tenantId])
+  @@index([fiscalYearId])
+  @@map("fin_budgets")
 }
 
 /// Fiscal year (سال مالی). Journals are dated inside an open year.
@@ -263,6 +286,7 @@ model FinFiscalYear {
 
   tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   journals FinJournal[]
+  budgets  FinBudget[]
 
   @@index([tenantId])
   @@map("fin_fiscal_years")
