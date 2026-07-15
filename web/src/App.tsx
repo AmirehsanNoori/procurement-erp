@@ -29,6 +29,8 @@ import { Profile } from './pages/Profile';
 import { Tenants } from './pages/Tenants';
 import { Approvals } from './pages/Approvals';
 import { Correspondence } from './pages/Correspondence';
+import { Contracts } from './pages/Contracts';
+import { ContractsExpiring } from './pages/ContractsExpiring';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
 import { Subscription } from './pages/Subscription';
@@ -133,6 +135,10 @@ export default function App() {
         <Route path="/finance/cost-centers" element={<Guarded permission="finance.view"><FinCostCenters /></Guarded>} />
         <Route path="/finance/cost-center-report" element={<Guarded permission="finance.view"><FinCostCenterReport /></Guarded>} />
         <Route path="/finance/accounts" element={<Guarded permission="finance.view"><FinAccounts /></Guarded>} />
+
+        {/* Contracts */}
+        <Route path="/contracts" element={<Guarded permission="contracts.view"><Contracts /></Guarded>} />
+        <Route path="/contracts/expiring" element={<Guarded permission="contracts.view"><ContractsExpiring /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

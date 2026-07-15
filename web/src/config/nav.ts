@@ -122,6 +122,15 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'contractsGroup',
+    title: 'قراردادها',
+    module: 'contracts',
+    items: [
+      { key: 'contractsList', path: '/contracts', label: 'قراردادها', icon: '📑', permission: 'contracts.view' },
+      { key: 'contractsExpiring', path: '/contracts/expiring', label: 'پایش سررسید', icon: '⏰', permission: 'contracts.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',

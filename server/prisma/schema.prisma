@@ -72,6 +72,9 @@ model Tenant {
   stocktakeItems        StocktakeItem[]
   purchaseOrders        PurchaseOrder[]
   supplierEvaluations   SupplierEvaluation[]
+  contracts             Contract[]
+  contractAmendments    ContractAmendment[]
+  contractGuarantees    ContractGuarantee[]
 
   @@map("tenants")
 }
@@ -573,6 +576,7 @@ model Supplier {
   blanketOrders BlanketOrder[]
   purchaseOrders PurchaseOrder[]
   evaluations   SupplierEvaluation[]
+  contracts     Contract[]
 
   @@index([tenantId])
   @@map("suppliers")
@@ -648,6 +652,86 @@ model SupplierEvaluation {
 
   @@index([tenantId, supplierId])
   @@map("supplier_evaluations")
+}
+
+// ── Contracts module (مدیریت قراردادها) ──────────────────────────────────────
+
+/// A contract with a counterparty (usually a supplier). Tracks value, term,
+/// renewal, plus linked amendments and guarantees.
+model Contract {
+  id               String    @id @default(cuid())
+  tenantId         String
+  contractNumber   String
+  title            String
+  type             String    @default("purchase") // purchase | service | lease | framework | other
+  partyName        String? // free-text counterparty when not a system supplier
+  supplierId       String? // optional link to a supplier
+  status           String    @default("draft") // draft | active | suspended | expired | terminated | renewed | closed
+  value            Decimal   @default(0) @db.Decimal(18, 2)
+  currency         String    @default("ریال")
+  startDate        DateTime?
+  endDate          DateTime?
+  autoRenew        Boolean   @default(false)
+  renewalNoticeDays Int? // notice window before endDate
+  description      String?
+  notes            String?
+  createdById      String?
+  approvedById     String?
+  approvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier   Supplier?           @relation(fields: [supplierId], references: [id])
+  amendments ContractAmendment[]
+  guarantees ContractGuarantee[]
+
+  @@unique([tenantId, contractNumber])
+  @@index([tenantId])
+  @@map("contracts")
+}
+
+/// A contract amendment (متمم) — a change to value and/or term.
+model ContractAmendment {
+  id              String    @id @default(cuid())
+  tenantId        String
+  contractId      String
+  amendmentNumber String
+  date            DateTime  @default(now())
+  description     String?
+  valueChange     Decimal?  @db.Decimal(18, 2) // signed delta to contract value
+  newEndDate      DateTime?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("contract_amendments")
+}
+
+/// A guarantee / bond attached to a contract (ضمانت‌نامه).
+model ContractGuarantee {
+  id              String    @id @default(cuid())
+  tenantId        String
+  contractId      String
+  type            String    @default("performance") // performance | advance | bid | warranty | retention
+  guaranteeNumber String?
+  amount          Decimal   @default(0) @db.Decimal(18, 2)
+  currency        String    @default("ریال")
+  bankName        String?
+  issueDate       DateTime?
+  expiryDate      DateTime?
+  status          String    @default("active") // active | released | expired | claimed
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("contract_guarantees")
 }
 
 model SupplierContact {
