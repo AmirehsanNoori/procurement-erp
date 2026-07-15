@@ -31,51 +31,10 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
-import { prisma } from '../lib/prisma';
-import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-
-// TEMPORARY: stocktake tables (W4) on the build-unreachable Supabase DB via app
-// runtime. Super-admin only; idempotent. Remove after use.
-router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
-  const stmts = [
-    `CREATE TABLE IF NOT EXISTS "stocktakes" (
-      "id" TEXT PRIMARY KEY,
-      "tenantId" TEXT NOT NULL,
-      "warehouseId" TEXT NOT NULL,
-      "number" INTEGER NOT NULL,
-      "status" TEXT NOT NULL DEFAULT 'draft',
-      "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "note" TEXT,
-      "createdById" TEXT,
-      "completedAt" TIMESTAMP(3),
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS "stocktakes_tenantId_number_key" ON "stocktakes" ("tenantId", "number");`,
-    `CREATE INDEX IF NOT EXISTS "stocktakes_tenantId_idx" ON "stocktakes" ("tenantId");`,
-    `CREATE TABLE IF NOT EXISTS "stocktake_items" (
-      "id" TEXT PRIMARY KEY,
-      "tenantId" TEXT NOT NULL,
-      "stocktakeId" TEXT NOT NULL,
-      "productId" TEXT NOT NULL,
-      "systemQty" DECIMAL(18,3) NOT NULL,
-      "countedQty" DECIMAL(18,3),
-      "unitCost" DECIMAL(18,2) NOT NULL DEFAULT 0,
-      "note" TEXT
-    );`,
-    `CREATE INDEX IF NOT EXISTS "stocktake_items_stocktakeId_idx" ON "stocktake_items" ("stocktakeId");`,
-    `DO $$ BEGIN
-      ALTER TABLE "stocktake_items" ADD CONSTRAINT "stocktake_items_stocktakeId_fkey" FOREIGN KEY ("stocktakeId") REFERENCES "stocktakes"("id") ON DELETE CASCADE;
-    EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-  ];
-  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
-  res.json({ ok: true, applied: 'stocktakes + stocktake_items' });
-}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
