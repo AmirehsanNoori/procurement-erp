@@ -36,42 +36,10 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
-import { prisma } from '../lib/prisma';
-import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-
-// TEMPORARY: office automation tables on the build-unreachable Supabase DB.
-// Super-admin only; idempotent. Remove after use.
-router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
-  const stmts = [
-    `CREATE TABLE IF NOT EXISTS "office_letters" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "letterNumber" TEXT NOT NULL, "direction" TEXT NOT NULL DEFAULT 'incoming',
-      "subject" TEXT NOT NULL, "correspondent" TEXT, "letterDate" TIMESTAMP(3), "priority" TEXT NOT NULL DEFAULT 'normal',
-      "status" TEXT NOT NULL DEFAULT 'registered', "referenceNumber" TEXT, "body" TEXT, "createdById" TEXT,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS "office_letters_tenantId_letterNumber_key" ON "office_letters" ("tenantId", "letterNumber");`,
-    `CREATE INDEX IF NOT EXISTS "office_letters_tenantId_idx" ON "office_letters" ("tenantId");`,
-    `CREATE TABLE IF NOT EXISTS "office_meetings" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "title" TEXT NOT NULL, "date" TIMESTAMP(3), "location" TEXT,
-      "organizer" TEXT, "attendees" TEXT, "agenda" TEXT, "minutes" TEXT, "status" TEXT NOT NULL DEFAULT 'scheduled', "createdById" TEXT,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE INDEX IF NOT EXISTS "office_meetings_tenantId_idx" ON "office_meetings" ("tenantId");`,
-    `CREATE TABLE IF NOT EXISTS "office_meeting_actions" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "meetingId" TEXT NOT NULL, "description" TEXT NOT NULL, "assignee" TEXT,
-      "dueDate" TIMESTAMP(3), "done" BOOLEAN NOT NULL DEFAULT false, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE INDEX IF NOT EXISTS "office_meeting_actions_meetingId_idx" ON "office_meeting_actions" ("meetingId");`,
-    `DO $$ BEGIN ALTER TABLE "office_meeting_actions" ADD CONSTRAINT "office_meeting_actions_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "office_meetings"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-  ];
-  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
-  res.json({ ok: true, applied: 'office tables' });
-}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
