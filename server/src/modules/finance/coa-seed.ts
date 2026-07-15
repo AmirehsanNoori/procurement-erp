@@ -40,6 +40,7 @@ export const IRANIAN_COA: CoaSeedNode[] = [
   { code: '2001', name: 'حساب‌ها و اسناد پرداختنی', type: 'liability', parentCode: '20', isPostable: false },
   { code: '200101', name: 'حساب‌های پرداختنی تجاری', type: 'liability', parentCode: '2001', isPostable: true },
   { code: '200102', name: 'اسناد پرداختنی', type: 'liability', parentCode: '2001', isPostable: true },
+  { code: '200103', name: 'حساب واسط دریافت/فاکتور کالا (GR/IR)', type: 'liability', parentCode: '2001', isPostable: true },
   { code: '2002', name: 'مالیات و عوارض پرداختنی', type: 'liability', parentCode: '20', isPostable: false },
   { code: '200201', name: 'مالیات بر ارزش افزوده', type: 'liability', parentCode: '2002', isPostable: true },
   { code: '200202', name: 'مالیات تکلیفی', type: 'liability', parentCode: '2002', isPostable: true },

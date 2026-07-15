@@ -92,6 +92,8 @@ export function FinJournals() {
                       {j.description ?? '—'}
                       {j.refType === 'invoice' && j.invoiceNumber && <span className="mr-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">از فاکتور {j.invoiceNumber}</span>}
                       {j.refType === 'payment' && <span className="mr-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">از پرداخت{j.invoiceNumber ? ` (فاکتور ${j.invoiceNumber})` : ''}</span>}
+                      {j.refType === 'goods_receipt' && <span className="mr-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">از رسید انبار</span>}
+                      {j.refType === 'stock_issue' && <span className="mr-2 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">از حواله انبار</span>}
                     </td>
                     <td className="p-3 tabular-nums">{faMoney(lineTotal(j))}</td>
                     <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[j.status]}`}>{STATUS_FA[j.status]}</span></td>

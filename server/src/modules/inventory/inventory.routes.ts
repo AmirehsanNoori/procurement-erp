@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { searchTerms } from '../../lib/search';
+import { createReceiptJournal, createIssueJournal } from '../finance/inventory-posting';
 
 // Mounted at /api/:tenantId/inventory behind requireAuth + requireTenant.
 const router = Router({ mergeParams: true });
@@ -231,7 +232,12 @@ router.post('/movements', validate(movementSchema), asyncHandler(async (req, res
       },
     });
   });
-  res.status(201).json({ movement });
+  // W2: an issue relieves inventory → post COGS (Dr COGS, Cr inventory). Fail-open.
+  let posting;
+  if (b.type === 'issue' && Number(movement.value) > 0) {
+    posting = await createIssueJournal(tenantId, movement.id, Number(movement.value), product.name, req.auth!.userId).catch(() => undefined);
+  }
+  res.status(201).json({ movement, posting });
 }));
 
 // transfer between two warehouses (transfer_out + transfer_in)
@@ -312,7 +318,7 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
   const products = await prisma.product.findMany({ where: { tenantId, id: { in: productIds } }, select: { id: true } });
   if (products.length !== productIds.length) throw ApiError.badRequest('کالای نامعتبر در اقلام');
 
-  await prisma.$transaction(async (tx) => {
+  const { receiptId, totalValue } = await prisma.$transaction(async (tx) => {
     // Formal goods-receipt document (Part 1).
     const receipt = await tx.goodsReceipt.create({
       data: {
@@ -321,8 +327,10 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
         requestRefId: invoice.requestId ?? null, receivedById: req.auth!.userId,
       },
     });
+    let total = 0;
     for (const line of b.lines) {
       const val = await applyValuedMovement(tx, tenantId, line.productId, b.warehouseId, 'in', line.quantity, line.unitCost);
+      total += val.value;
       await tx.goodsReceiptItem.create({ data: { tenantId, receiptId: receipt.id, productId: line.productId, quantity: line.quantity, unitCost: val.unitCost, note: line.note ?? null } });
       await tx.stockMovement.create({
         data: {
@@ -334,12 +342,15 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
       });
     }
     await tx.invoice.update({ where: { id: invoice.id }, data: { receivedAt: new Date() } });
+    return { receiptId: receipt.id, totalValue: round2(total) };
   });
+  // W2: post the goods-receipt voucher (Dr inventory, Cr GR/IR). Fail-open.
+  const posting = await createReceiptJournal(tenantId, receiptId, totalValue, `فاکتور ${invoice.invoiceNumber}`, req.auth!.userId).catch(() => undefined);
   // Notify procurement that the goods were received.
   await prisma.notification.create({
     data: { tenantId, type: 'invoice', level: 'important', title: `رسید فاکتور ${invoice.invoiceNumber} در انبار ثبت شد`, entityType: 'invoice', entityId: invoice.id },
   }).catch(() => undefined);
-  res.json({ ok: true });
+  res.json({ ok: true, posting });
 }));
 
 export default router;

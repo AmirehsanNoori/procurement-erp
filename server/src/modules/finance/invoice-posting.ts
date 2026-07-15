@@ -16,7 +16,10 @@ import { prisma } from '../../lib/prisma';
  */
 
 export const INVOICE_POSTING_DEFAULTS = {
-  inventoryCode: '100301', // موجودی کالا (debit: goods received)
+  // Debit the GR/IR clearing account (the goods receipt already debited موجودی
+  // کالا, W2). For flows without a goods receipt this can be overridden to a
+  // direct expense/inventory account.
+  inventoryCode: '200103', // حساب واسط دریافت/فاکتور کالا (GR/IR)
   inputVatCode: '100402', // پیش‌پرداخت مالیات (claimable input VAT)
   payableCode: '200101', // حساب‌های پرداختنی تجاری (credit: supplier)
 };
