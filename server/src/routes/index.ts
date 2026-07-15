@@ -35,37 +35,10 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
-import { prisma } from '../lib/prisma';
-import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-
-// TEMPORARY: ticketing tables on the build-unreachable Supabase DB. Super-admin
-// only; idempotent. Remove after use.
-router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
-  const stmts = [
-    `CREATE TABLE IF NOT EXISTS "tickets" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "number" INTEGER NOT NULL, "subject" TEXT NOT NULL, "description" TEXT,
-      "category" TEXT NOT NULL DEFAULT 'it', "priority" TEXT NOT NULL DEFAULT 'medium', "status" TEXT NOT NULL DEFAULT 'open',
-      "requesterId" TEXT, "assigneeId" TEXT, "dueDate" TIMESTAMP(3), "resolvedAt" TIMESTAMP(3),
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS "tickets_tenantId_number_key" ON "tickets" ("tenantId", "number");`,
-    `CREATE INDEX IF NOT EXISTS "tickets_tenantId_idx" ON "tickets" ("tenantId");`,
-    `CREATE INDEX IF NOT EXISTS "tickets_tenantId_status_idx" ON "tickets" ("tenantId", "status");`,
-    `CREATE TABLE IF NOT EXISTS "ticket_comments" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "ticketId" TEXT NOT NULL, "authorId" TEXT, "body" TEXT NOT NULL,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE INDEX IF NOT EXISTS "ticket_comments_ticketId_idx" ON "ticket_comments" ("ticketId");`,
-    `DO $$ BEGIN ALTER TABLE "ticket_comments" ADD CONSTRAINT "ticket_comments_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "tickets"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-  ];
-  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
-  res.json({ ok: true, applied: 'tickets + ticket_comments' });
-}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
