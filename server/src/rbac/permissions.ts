@@ -38,6 +38,7 @@ export const MODULES = {
   finance: 'finance',
   contracts: 'contracts',
   hr: 'hr',
+  ticketing: 'ticketing',
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -68,6 +69,7 @@ export const ACTIONS = [
   'adjust',
   'post',
   'void',
+  'assign',
 ] as const;
 
 export type ActionKey = (typeof ACTIONS)[number];
@@ -109,6 +111,7 @@ export const MODULE_ACTIONS: Record<ModuleKey, ActionKey[]> = {
   finance: ['view', 'create', 'edit', 'delete', 'post', 'void', 'export'],
   contracts: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
   hr: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
+  ticketing: ['view', 'create', 'edit', 'delete', 'assign'],
 };
 
 export interface PermissionDef {
@@ -144,6 +147,7 @@ const ACTION_FA: Record<ActionKey, string> = {
   adjust: 'اصلاح موجودی',
   post: 'ثبت قطعی',
   void: 'ابطال',
+  assign: 'تخصیص',
 };
 
 export const MODULE_FA: Record<ModuleKey, string> = {
@@ -179,6 +183,7 @@ export const MODULE_FA: Record<ModuleKey, string> = {
   finance: 'مالی و حسابداری',
   contracts: 'قراردادها',
   hr: 'منابع انسانی',
+  ticketing: 'تیکتینگ و پشتیبانی',
 };
 
 /** Flat list of all permission definitions, derived from MODULE_ACTIONS. */

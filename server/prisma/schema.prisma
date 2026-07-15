@@ -79,6 +79,8 @@ model Tenant {
   hrEmployees           HrEmployee[]
   hrLeaveRequests       HrLeaveRequest[]
   hrAttendance          HrAttendance[]
+  tickets               Ticket[]
+  ticketComments        TicketComment[]
 
   @@map("tenants")
 }
@@ -511,6 +513,48 @@ model HrAttendance {
   @@unique([employeeId, date])
   @@index([tenantId])
   @@map("hr_attendance")
+}
+
+// ── Ticketing module (پشتیبانی و تیکتینگ) ────────────────────────────────────
+
+model Ticket {
+  id          String    @id @default(cuid())
+  tenantId    String
+  number      Int
+  subject     String
+  description String?
+  category    String    @default("it") // it | hr | facilities | finance | other
+  priority    String    @default("medium") // low | medium | high | urgent
+  status      String    @default("open") // open | in_progress | resolved | closed | cancelled
+  requesterId String? // user who raised it
+  assigneeId  String? // agent handling it
+  dueDate     DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  comments TicketComment[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  ticketId  String
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_comments")
 }
 
 model BillingInvoice {

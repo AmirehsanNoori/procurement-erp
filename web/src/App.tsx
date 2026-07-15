@@ -36,6 +36,8 @@ import { HrEmployees } from './pages/HrEmployees';
 import { HrDepartments } from './pages/HrDepartments';
 import { HrLeaves } from './pages/HrLeaves';
 import { HrAttendance } from './pages/HrAttendance';
+import { Tickets } from './pages/Tickets';
+import { TicketsDashboard } from './pages/TicketsDashboard';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
 import { Subscription } from './pages/Subscription';
@@ -151,6 +153,10 @@ export default function App() {
         <Route path="/hr/departments" element={<Guarded permission="hr.view"><HrDepartments /></Guarded>} />
         <Route path="/hr/leaves" element={<Guarded permission="hr.view"><HrLeaves /></Guarded>} />
         <Route path="/hr/attendance" element={<Guarded permission="hr.view"><HrAttendance /></Guarded>} />
+
+        {/* Ticketing */}
+        <Route path="/ticketing" element={<Guarded permission="ticketing.view"><TicketsDashboard /></Guarded>} />
+        <Route path="/ticketing/list" element={<Guarded permission="ticketing.view"><Tickets /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

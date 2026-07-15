@@ -143,6 +143,15 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'ticketingGroup',
+    title: 'تیکتینگ',
+    module: 'ticketing',
+    items: [
+      { key: 'ticketsDash', path: '/ticketing', label: 'داشبورد', icon: '🏠', permission: 'ticketing.view' },
+      { key: 'ticketsList', path: '/ticketing/list', label: 'تیکت‌ها', icon: '🎫', permission: 'ticketing.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',
