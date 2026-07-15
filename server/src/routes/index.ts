@@ -27,16 +27,61 @@ import { expensesModule } from '../modules/expenses/expenses.module';
 import { inventoryModule } from '../modules/inventory/inventory.module';
 import { financeModule } from '../modules/finance/finance.module';
 import { contractsModule } from '../modules/contracts/contracts.module';
+import { hrModule } from '../modules/hr/hr.module';
 import billingRoutes from '../modules/billing/billing.routes';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
+import { prisma } from '../lib/prisma';
+import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
+// TEMPORARY: HR module tables on the build-unreachable Supabase DB. Super-admin
+// only; idempotent. Remove after use.
+router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
+  const stmts = [
+    `CREATE TABLE IF NOT EXISTS "hr_departments" (
+      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "code" TEXT NOT NULL, "name" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "hr_departments_tenantId_code_key" ON "hr_departments" ("tenantId", "code");`,
+    `CREATE INDEX IF NOT EXISTS "hr_departments_tenantId_idx" ON "hr_departments" ("tenantId");`,
+    `CREATE TABLE IF NOT EXISTS "hr_employees" (
+      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "employeeCode" TEXT NOT NULL, "fullName" TEXT NOT NULL,
+      "nationalId" TEXT, "position" TEXT, "departmentId" TEXT, "employmentType" TEXT NOT NULL DEFAULT 'full_time',
+      "status" TEXT NOT NULL DEFAULT 'active', "hireDate" TIMESTAMP(3), "baseSalary" DECIMAL(18,2), "phone" TEXT, "email" TEXT,
+      "annualLeaveEntitlement" INTEGER NOT NULL DEFAULT 26, "notes" TEXT, "createdById" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "hr_employees_tenantId_employeeCode_key" ON "hr_employees" ("tenantId", "employeeCode");`,
+    `CREATE INDEX IF NOT EXISTS "hr_employees_tenantId_idx" ON "hr_employees" ("tenantId");`,
+    `CREATE TABLE IF NOT EXISTS "hr_leave_requests" (
+      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "employeeId" TEXT NOT NULL, "type" TEXT NOT NULL DEFAULT 'annual',
+      "startDate" TIMESTAMP(3) NOT NULL, "endDate" TIMESTAMP(3) NOT NULL, "days" DECIMAL(6,2) NOT NULL, "reason" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'pending', "decidedById" TEXT, "decidedAt" TIMESTAMP(3), "createdById" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE INDEX IF NOT EXISTS "hr_leave_requests_tenantId_idx" ON "hr_leave_requests" ("tenantId");`,
+    `CREATE INDEX IF NOT EXISTS "hr_leave_requests_employeeId_idx" ON "hr_leave_requests" ("employeeId");`,
+    `DO $$ BEGIN ALTER TABLE "hr_leave_requests" ADD CONSTRAINT "hr_leave_requests_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+    `CREATE TABLE IF NOT EXISTS "hr_attendance" (
+      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "employeeId" TEXT NOT NULL, "date" DATE NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'present', "hours" DECIMAL(5,2), "note" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "hr_attendance_employeeId_date_key" ON "hr_attendance" ("employeeId", "date");`,
+    `CREATE INDEX IF NOT EXISTS "hr_attendance_tenantId_idx" ON "hr_attendance" ("tenantId");`,
+    `DO $$ BEGIN ALTER TABLE "hr_attendance" ADD CONSTRAINT "hr_attendance_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  ];
+  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
+  res.json({ ok: true, applied: 'hr tables' });
+}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
@@ -83,6 +128,7 @@ registry.register(expensesModule);
 registry.register(inventoryModule);
 registry.register(financeModule);
 registry.register(contractsModule);
+registry.register(hrModule);
 registry.register(legacy('billing', 'Billing', 'billing', billingRoutes));
 
 const tenantScoped = Router({ mergeParams: true });

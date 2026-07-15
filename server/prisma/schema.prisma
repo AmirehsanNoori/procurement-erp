@@ -75,6 +75,10 @@ model Tenant {
   contracts             Contract[]
   contractAmendments    ContractAmendment[]
   contractGuarantees    ContractGuarantee[]
+  hrDepartments         HrDepartment[]
+  hrEmployees           HrEmployee[]
+  hrLeaveRequests       HrLeaveRequest[]
+  hrAttendance          HrAttendance[]
 
   @@map("tenants")
 }
@@ -418,6 +422,95 @@ model FinCostCenter {
   @@unique([tenantId, code])
   @@index([tenantId])
   @@map("fin_cost_centers")
+}
+
+// ── HR module (منابع انسانی) ─────────────────────────────────────────────────
+
+model HrDepartment {
+  id        String     @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees HrEmployee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("hr_departments")
+}
+
+model HrEmployee {
+  id             String   @id @default(cuid())
+  tenantId       String
+  employeeCode   String
+  fullName       String
+  nationalId     String?
+  position       String?
+  departmentId   String?
+  employmentType String   @default("full_time") // full_time | part_time | contract
+  status         String   @default("active") // active | on_leave | terminated
+  hireDate       DateTime?
+  baseSalary     Decimal? @db.Decimal(18, 2)
+  phone          String?
+  email          String?
+  annualLeaveEntitlement Int @default(26) // working days per year
+  notes          String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department HrDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  leaves     HrLeaveRequest[]
+  attendance HrAttendance[]
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId])
+  @@map("hr_employees")
+}
+
+model HrLeaveRequest {
+  id          String    @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  type        String    @default("annual") // annual | sick | unpaid | mission | other
+  startDate   DateTime
+  endDate     DateTime
+  days        Decimal   @db.Decimal(6, 2)
+  reason      String?
+  status      String    @default("pending") // pending | approved | rejected
+  decidedById String?
+  decidedAt   DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee HrEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("hr_leave_requests")
+}
+
+model HrAttendance {
+  id         String   @id @default(cuid())
+  tenantId   String
+  employeeId String
+  date       DateTime @db.Date
+  status     String   @default("present") // present | absent | leave | mission | holiday
+  hours      Decimal? @db.Decimal(5, 2)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee HrEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([tenantId])
+  @@map("hr_attendance")
 }
 
 model BillingInvoice {

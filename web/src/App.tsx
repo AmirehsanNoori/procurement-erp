@@ -31,6 +31,11 @@ import { Approvals } from './pages/Approvals';
 import { Correspondence } from './pages/Correspondence';
 import { Contracts } from './pages/Contracts';
 import { ContractsExpiring } from './pages/ContractsExpiring';
+import { HrDashboard } from './pages/HrDashboard';
+import { HrEmployees } from './pages/HrEmployees';
+import { HrDepartments } from './pages/HrDepartments';
+import { HrLeaves } from './pages/HrLeaves';
+import { HrAttendance } from './pages/HrAttendance';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
 import { Subscription } from './pages/Subscription';
@@ -139,6 +144,13 @@ export default function App() {
         {/* Contracts */}
         <Route path="/contracts" element={<Guarded permission="contracts.view"><Contracts /></Guarded>} />
         <Route path="/contracts/expiring" element={<Guarded permission="contracts.view"><ContractsExpiring /></Guarded>} />
+
+        {/* HR */}
+        <Route path="/hr" element={<Guarded permission="hr.view"><HrDashboard /></Guarded>} />
+        <Route path="/hr/employees" element={<Guarded permission="hr.view"><HrEmployees /></Guarded>} />
+        <Route path="/hr/departments" element={<Guarded permission="hr.view"><HrDepartments /></Guarded>} />
+        <Route path="/hr/leaves" element={<Guarded permission="hr.view"><HrLeaves /></Guarded>} />
+        <Route path="/hr/attendance" element={<Guarded permission="hr.view"><HrAttendance /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

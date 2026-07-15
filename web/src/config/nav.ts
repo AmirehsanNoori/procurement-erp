@@ -131,6 +131,18 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'hrGroup',
+    title: 'منابع انسانی',
+    module: 'hr',
+    items: [
+      { key: 'hrDashboard', path: '/hr', label: 'داشبورد', icon: '🏠', permission: 'hr.view' },
+      { key: 'hrEmployees', path: '/hr/employees', label: 'کارکنان', icon: '👤', permission: 'hr.view' },
+      { key: 'hrLeaves', path: '/hr/leaves', label: 'مرخصی‌ها', icon: '🌴', permission: 'hr.view' },
+      { key: 'hrAttendance', path: '/hr/attendance', label: 'حضور و غیاب', icon: '🕐', permission: 'hr.view' },
+      { key: 'hrDepartments', path: '/hr/departments', label: 'دپارتمان‌ها', icon: '🏢', permission: 'hr.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',
