@@ -30,6 +30,7 @@ import { contractsModule } from '../modules/contracts/contracts.module';
 import { hrModule } from '../modules/hr/hr.module';
 import { ticketingModule } from '../modules/ticketing/ticketing.module';
 import { officeModule } from '../modules/office/office.module';
+import { aiModule } from '../modules/ai/ai.module';
 import billingRoutes from '../modules/billing/billing.routes';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireTenant } from '../middleware/requireTenant';
@@ -89,6 +90,7 @@ registry.register(contractsModule);
 registry.register(hrModule);
 registry.register(ticketingModule);
 registry.register(officeModule);
+registry.register(aiModule);
 registry.register(legacy('billing', 'Billing', 'billing', billingRoutes));
 
 const tenantScoped = Router({ mergeParams: true });

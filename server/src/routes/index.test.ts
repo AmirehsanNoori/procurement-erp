@@ -34,6 +34,7 @@ describe('tenant module mounting (via Core registry)', () => {
       'hr',
       'ticketing',
       'office',
+      'ai',
       'billing',
     ]);
   });

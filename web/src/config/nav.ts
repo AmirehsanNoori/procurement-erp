@@ -162,6 +162,14 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'aiGroup',
+    title: 'دستیار هوشمند',
+    module: 'ai',
+    items: [
+      { key: 'aiAssistant', path: '/ai', label: 'دستیار هوشمند', icon: '🤖', permission: 'ai.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',

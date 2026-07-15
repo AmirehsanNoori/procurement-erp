@@ -41,6 +41,7 @@ import { TicketsDashboard } from './pages/TicketsDashboard';
 import { OfficeDashboard } from './pages/OfficeDashboard';
 import { OfficeLetters } from './pages/OfficeLetters';
 import { OfficeMeetings } from './pages/OfficeMeetings';
+import { AiAssistant } from './pages/AiAssistant';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
 import { Subscription } from './pages/Subscription';
@@ -165,6 +166,9 @@ export default function App() {
         <Route path="/office" element={<Guarded permission="office.view"><OfficeDashboard /></Guarded>} />
         <Route path="/office/letters" element={<Guarded permission="office.view"><OfficeLetters /></Guarded>} />
         <Route path="/office/meetings" element={<Guarded permission="office.view"><OfficeMeetings /></Guarded>} />
+
+        {/* AI assistant */}
+        <Route path="/ai" element={<Guarded permission="ai.view"><AiAssistant /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

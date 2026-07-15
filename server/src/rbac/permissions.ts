@@ -40,6 +40,7 @@ export const MODULES = {
   hr: 'hr',
   ticketing: 'ticketing',
   office: 'office',
+  ai: 'ai',
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -114,6 +115,7 @@ export const MODULE_ACTIONS: Record<ModuleKey, ActionKey[]> = {
   hr: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
   ticketing: ['view', 'create', 'edit', 'delete', 'assign'],
   office: ['view', 'create', 'edit', 'delete'],
+  ai: ['view'],
 };
 
 export interface PermissionDef {
@@ -187,6 +189,7 @@ export const MODULE_FA: Record<ModuleKey, string> = {
   hr: 'منابع انسانی',
   ticketing: 'تیکتینگ و پشتیبانی',
   office: 'اتوماسیون اداری',
+  ai: 'دستیار هوشمند',
 };
 
 /** Flat list of all permission definitions, derived from MODULE_ACTIONS. */
