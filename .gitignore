@@ -50,3 +50,6 @@ web/public/sw-*.js
 # web/.env, so this pins VITE_API_URL to the same-origin /api for every deploy.
 !web/.env.production
 .github/workflows/
+
+# Local-only project guide (not committed, per request)
+/CLAUDE.md
