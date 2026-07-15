@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
+import { downloadBlob } from '../lib/download';
 import { faDate, faMoney } from '../lib/format';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { JDatePicker } from '../components/JDatePicker';
@@ -40,6 +41,11 @@ export function FinLedger() {
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">از تاریخ</span><JDatePicker value={from} onChange={setFrom} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">تا تاریخ</span><JDatePicker value={to} onChange={setTo} /></label>
         </div>
+        {accountId && (
+          <div className="mt-2 flex justify-end">
+            <button className="btn btn-outline px-3 py-1 text-xs" onClick={() => downloadBlob(`/${tid}/finance/ledger/${accountId}?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}), format: 'csv' }).toString()}`, 'ledger.csv')}>📥 خروجی</button>
+          </div>
+        )}
       </div>
 
       {!accountId ? (

@@ -101,6 +101,7 @@ export const NAV: NavGroup[] = [
     title: 'مالی و حسابداری',
     module: 'finance',
     items: [
+      { key: 'finDashboard', path: '/finance', label: 'داشبورد مالی', icon: '🏠', permission: 'finance.view' },
       { key: 'finJournalEntry', path: '/finance/journals/new', label: 'ثبت سند', icon: '➕', permission: 'finance.create' },
       { key: 'finJournals', path: '/finance/journals', label: 'دفتر روزنامه', icon: '📓', permission: 'finance.view' },
       { key: 'finLedger', path: '/finance/ledger', label: 'دفتر کل', icon: '📗', permission: 'finance.view' },

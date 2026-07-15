@@ -8,12 +8,25 @@ import { requirePermission } from '../../middleware/requirePermission';
 import { IRANIAN_COA, levelOfCode, AccountType } from './coa-seed';
 import { createInvoiceJournal } from './invoice-posting';
 import { createPaymentJournal } from './payment-posting';
+import { searchTerms } from '../../lib/search';
+import { Response } from 'express';
 
 // Mounted at /api/:tenantId/finance behind requireAuth + requireTenant.
 const router = Router({ mergeParams: true });
 
 const tid = (req: { tenant?: { tenantId: string } }) => req.tenant!.tenantId;
+const tcode = (req: { tenant?: { tenantCode?: string } }) => req.tenant?.tenantCode ?? 'tenant';
 const ACCOUNT_TYPES = ['asset', 'liability', 'equity', 'income', 'expense'] as const;
+
+/** Send an Excel-friendly UTF-8 CSV (BOM + attachment) for a finance report. */
+function sendCsv(res: Response, filename: string, header: string[], rows: (string | number)[][]) {
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const body = [header.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('﻿' + body);
+}
+const csvDate = (d: Date | string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '');
 
 // ── Chart of accounts ────────────────────────────────────────────────────────
 const accountSchema = z.object({
@@ -251,13 +264,41 @@ async function nextJournalNumber(tenantId: string): Promise<number> {
 const journalInclude = { lines: { include: { account: { select: { code: true, name: true } }, costCenter: { select: { code: true, name: true } } }, orderBy: { sortOrder: 'asc' as const } } };
 
 router.get('/journals', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
   const status = req.query.status as string | undefined;
+  const from = req.query.from ? new Date(req.query.from as string) : null;
+  const to = req.query.to ? new Date(req.query.to as string) : null;
+  const accountId = req.query.accountId as string | undefined;
+  const search = (req.query.search as string | undefined)?.trim();
+  const terms = searchTerms(search);
+  const searchNum = search && /^\d+$/.test(search) ? Number(search) : undefined;
   const where: Prisma.FinJournalWhereInput = {
-    tenantId: tid(req),
+    tenantId,
     ...(status && ['draft', 'posted', 'void'].includes(status) ? { status } : {}),
+    ...(from || to ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
+    ...(accountId ? { lines: { some: { accountId } } } : {}),
+    ...(terms.length || searchNum !== undefined
+      ? { OR: [
+          ...(searchNum !== undefined ? [{ number: searchNum }] : []),
+          ...terms.map((t) => ({ description: { contains: t, mode: 'insensitive' as const } })),
+        ] }
+      : {}),
   };
-  const journals = await prisma.finJournal.findMany({ where, include: journalInclude, orderBy: { number: 'desc' }, take: 300 });
-  res.json({ journals: await attachInvoiceNumbers(tid(req), journals) });
+  const journals = await prisma.finJournal.findMany({ where, include: journalInclude, orderBy: { number: 'desc' }, take: 500 });
+  const enriched = await attachInvoiceNumbers(tenantId, journals);
+
+  if (req.query.format === 'csv') {
+    const statusFa: Record<string, string> = { draft: 'پیش‌نویس', posted: 'قطعی', void: 'باطل' };
+    const rows = enriched.flatMap((j) => j.lines.map((l) => [
+      j.number, csvDate(j.date), statusFa[j.status] ?? j.status, j.description ?? '',
+      `${l.account.code} ${l.account.name}`, l.description ?? '',
+      l.costCenter ? `${l.costCenter.code} ${l.costCenter.name}` : '',
+      Number(l.debit), Number(l.credit),
+    ] as (string | number)[]));
+    return sendCsv(res, `journal-${tcode(req)}-${csvDate(new Date())}.csv`,
+      ['شماره سند', 'تاریخ', 'وضعیت', 'شرح سند', 'حساب', 'شرح سطر', 'مرکز هزینه', 'بدهکار', 'بستانکار'], rows);
+  }
+  res.json({ journals: enriched });
 }));
 
 /** Attach the linked invoice number to invoice/payment-sourced journals (soft ref). */
@@ -493,6 +534,11 @@ router.get('/ledger/:accountId', requirePermission('finance.view'), asyncHandler
     running = round2(running + Number(l.debit) - Number(l.credit));
     return { journalNumber: l.journal.number, date: l.journal.date, description: l.description ?? l.journal.description, debit: Number(l.debit), credit: Number(l.credit), balance: running };
   });
+  if (req.query.format === 'csv') {
+    return sendCsv(res, `ledger-${account.code}-${tcode(req)}-${csvDate(new Date())}.csv`,
+      ['سند', 'تاریخ', 'شرح', 'بدهکار', 'بستانکار', 'مانده'],
+      [['—', '', 'مانده ابتدای دوره', '', '', round2(opening)], ...rows.map((r) => [r.journalNumber, csvDate(r.date), r.description ?? '', r.debit, r.credit, r.balance])]);
+  }
   res.json({ account, opening: round2(opening), rows, closing: running });
 }));
 
@@ -518,7 +564,43 @@ router.get('/trial-balance', requirePermission('finance.view'), asyncHandler(asy
       return { accountId: a.id, code: a.code, name: a.name, type: a.type as AccountType, debit, credit, balanceDebit: net > 0 ? net : 0, balanceCredit: net < 0 ? -net : 0 };
     });
   const totals = rows.reduce((t, r) => ({ debit: round2(t.debit + r.debit), credit: round2(t.credit + r.credit) }), { debit: 0, credit: 0 });
+  if (req.query.format === 'csv') {
+    return sendCsv(res, `trial-balance-${tcode(req)}-${csvDate(new Date())}.csv`,
+      ['کد', 'نام حساب', 'گردش بدهکار', 'گردش بستانکار', 'مانده بدهکار', 'مانده بستانکار'],
+      rows.map((r) => [r.code, r.name, r.debit, r.credit, r.balanceDebit, r.balanceCredit]));
+  }
   res.json({ rows, totals });
+}));
+
+/** Finance overview — KPIs for the module landing dashboard. */
+router.get('/overview', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const [accounts, latestFy, draftCount, postedCount, recent, invoices, payAgg, sumsAll] = await Promise.all([
+    prisma.finAccount.findMany({ where: { tenantId }, select: { id: true, type: true, code: true, isPostable: true } }),
+    prisma.finFiscalYear.findFirst({ where: { tenantId }, orderBy: { startDate: 'desc' } }),
+    prisma.finJournal.count({ where: { tenantId, status: 'draft' } }),
+    prisma.finJournal.count({ where: { tenantId, status: 'posted' } }),
+    prisma.finJournal.findMany({ where: { tenantId }, orderBy: { number: 'desc' }, take: 6, select: { id: true, number: true, date: true, description: true, status: true } }),
+    prisma.invoice.findMany({ where: { tenantId }, select: { totalAmount: true } }),
+    prisma.payment.aggregate({ where: { tenantId }, _sum: { amount: true } }),
+    postedSums(tenantId, null, null),
+  ]);
+  let cashTotal = 0;
+  for (const a of accounts) if (a.isPostable && a.code.startsWith('1001')) { const s = sumsAll.get(a.id); if (s) cashTotal += s.debit - s.credit; }
+  const invoiced = invoices.reduce((s, i) => s + Number(i.totalAmount), 0);
+  const paid = Number(payAgg._sum.amount ?? 0);
+  // Net income over the most recent fiscal year (or all-time if none defined).
+  const nySums = latestFy ? await postedSums(tenantId, latestFy.startDate, latestFy.endDate) : sumsAll;
+  let income = 0, expense = 0;
+  for (const a of accounts) { const s = nySums.get(a.id); if (!s) continue; if (a.type === 'income') income += s.credit - s.debit; else if (a.type === 'expense') expense += s.debit - s.credit; }
+  res.json({
+    cashTotal: round2(cashTotal),
+    payablesOutstanding: round2(Math.max(0, invoiced - paid)),
+    income: round2(income), expense: round2(expense), netIncome: round2(income - expense),
+    draftCount, postedCount, accountCount: accounts.length,
+    fiscalYear: latestFy ? { title: latestFy.title, status: latestFy.status } : null,
+    recent,
+  });
 }));
 
 // ── Financial statements (F4) ────────────────────────────────────────────────

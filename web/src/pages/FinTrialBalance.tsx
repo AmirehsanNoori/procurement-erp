@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
+import { downloadBlob } from '../lib/download';
 import { faMoney } from '../lib/format';
 import { JDatePicker } from '../components/JDatePicker';
 
@@ -30,7 +31,10 @@ export function FinTrialBalance() {
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">از تاریخ</span><JDatePicker value={from} onChange={setFrom} /></label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">تا تاریخ</span><JDatePicker value={to} onChange={setTo} /></label>
         </div>
-        <p className="mt-2 text-xs text-slate-400">فقط اسناد «قطعی» در تراز لحاظ می‌شوند.</p>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-slate-400">فقط اسناد «قطعی» در تراز لحاظ می‌شوند.</p>
+          <button className="btn btn-outline px-3 py-1 text-xs" onClick={() => downloadBlob(`/${tid}/finance/trial-balance?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}), format: 'csv' }).toString()}`, 'trial-balance.csv')}>📥 خروجی</button>
+        </div>
       </div>
 
       <div className="card overflow-x-auto p-0">

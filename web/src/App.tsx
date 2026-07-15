@@ -47,6 +47,7 @@ import { FinFiscalYears } from './pages/FinFiscalYears';
 import { FinBudgets } from './pages/FinBudgets';
 import { FinCostCenters } from './pages/FinCostCenters';
 import { FinCostCenterReport } from './pages/FinCostCenterReport';
+import { FinDashboard } from './pages/FinDashboard';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -108,6 +109,7 @@ export default function App() {
         <Route path="/inventory/warehouses" element={<Guarded permission="warehouse.view"><InventoryWarehouses /></Guarded>} />
 
         {/* Finance / General Ledger */}
+        <Route path="/finance" element={<Guarded permission="finance.view"><FinDashboard /></Guarded>} />
         <Route path="/finance/journals" element={<Guarded permission="finance.view"><FinJournals /></Guarded>} />
         <Route path="/finance/journals/new" element={<Guarded permission="finance.create"><FinJournalEntry /></Guarded>} />
         <Route path="/finance/journals/:id/edit" element={<Guarded permission="finance.edit"><FinJournalEntry /></Guarded>} />

@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
+import { downloadBlob } from '../lib/download';
 import { faDate, faMoney } from '../lib/format';
+import { JDatePicker } from '../components/JDatePicker';
 
 interface Line { id: string; debit: string; credit: string; description: string | null; account: { code: string; name: string }; costCenter: { code: string; name: string } | null; }
 interface Journal {
@@ -20,12 +22,16 @@ export function FinJournals() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [err, setErr] = useState('');
 
+  const params = { ...(status ? { status } : {}), ...(search ? { search } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
   const journalsQ = useQuery({
-    queryKey: ['fin-journals', tid, status],
-    queryFn: async () => (await api.get(`/${tid}/finance/journals`, { params: status ? { status } : {} })).data.journals as Journal[],
+    queryKey: ['fin-journals', tid, status, search, from, to],
+    queryFn: async () => (await api.get(`/${tid}/finance/journals`, { params })).data.journals as Journal[],
     enabled: !!tid,
   });
 
@@ -54,7 +60,19 @@ export function FinJournals() {
             <button key={v} onClick={() => setStatus(v)} className={`rounded-lg px-3 py-1 text-sm ${status === v ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{lbl}</button>
           ))}
         </div>
-        {canCreate && <button className="btn btn-primary px-3 py-1 text-sm" onClick={() => navigate('/finance/journals/new')}>＋ ثبت سند</button>}
+        <div className="flex gap-2">
+          <button className="btn btn-outline px-3 py-1 text-sm" onClick={() => downloadBlob(`/${tid}/finance/journals?${new URLSearchParams({ ...params, format: 'csv' }).toString()}`, 'journal.csv')}>📥 خروجی</button>
+          {canCreate && <button className="btn btn-primary px-3 py-1 text-sm" onClick={() => navigate('/finance/journals/new')}>＋ ثبت سند</button>}
+        </div>
+      </div>
+      <div className="card mb-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label className="block sm:col-span-1"><span className="mb-1 block text-xs font-bold text-slate-600">جستجو (شماره یا شرح)</span>
+            <input className="input w-full" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="شمارهٔ سند یا متن شرح..." />
+          </label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">از تاریخ</span><JDatePicker value={from} onChange={setFrom} /></label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">تا تاریخ</span><JDatePicker value={to} onChange={setTo} /></label>
+        </div>
       </div>
       {err && <div className="mb-2 text-sm text-rose-600">{err}</div>}
 
