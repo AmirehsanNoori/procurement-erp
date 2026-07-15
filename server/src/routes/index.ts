@@ -31,10 +31,35 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
+import { prisma } from '../lib/prisma';
+import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
+// TEMPORARY: create fin_cost_centers + fin_journal_lines.costCenterId (F6) on the
+// build-unreachable Supabase DB via app runtime. Super-admin only; idempotent.
+router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
+  const stmts = [
+    `CREATE TABLE IF NOT EXISTS "fin_cost_centers" (
+      "id" TEXT PRIMARY KEY,
+      "tenantId" TEXT NOT NULL,
+      "code" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "isActive" BOOLEAN NOT NULL DEFAULT true,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "fin_cost_centers_tenantId_code_key" ON "fin_cost_centers" ("tenantId", "code");`,
+    `CREATE INDEX IF NOT EXISTS "fin_cost_centers_tenantId_idx" ON "fin_cost_centers" ("tenantId");`,
+    `ALTER TABLE "fin_journal_lines" ADD COLUMN IF NOT EXISTS "costCenterId" TEXT;`,
+    `CREATE INDEX IF NOT EXISTS "fin_journal_lines_costCenterId_idx" ON "fin_journal_lines" ("costCenterId");`,
+  ];
+  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
+  res.json({ ok: true, applied: 'fin_cost_centers + fin_journal_lines.costCenterId' });
+}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);

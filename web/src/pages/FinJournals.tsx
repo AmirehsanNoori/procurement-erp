@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
 import { faDate, faMoney } from '../lib/format';
 
-interface Line { id: string; debit: string; credit: string; description: string | null; account: { code: string; name: string }; }
+interface Line { id: string; debit: string; credit: string; description: string | null; account: { code: string; name: string }; costCenter: { code: string; name: string } | null; }
 interface Journal {
   id: string; number: number; date: string; description: string | null; status: string;
   postedAt: string | null; lines: Line[]; refType: string | null; invoiceNumber: string | null;
@@ -92,12 +92,13 @@ export function FinJournals() {
                     <tr className="bg-slate-50/50">
                       <td colSpan={6} className="p-3">
                         <table className="w-full text-xs">
-                          <thead><tr className="text-right text-slate-400"><th className="p-1">حساب</th><th className="p-1">شرح</th><th className="p-1">بدهکار</th><th className="p-1">بستانکار</th></tr></thead>
+                          <thead><tr className="text-right text-slate-400"><th className="p-1">حساب</th><th className="p-1">شرح</th><th className="p-1">مرکز هزینه</th><th className="p-1">بدهکار</th><th className="p-1">بستانکار</th></tr></thead>
                           <tbody>
                             {j.lines.map((l) => (
                               <tr key={l.id} className="border-t border-slate-100">
                                 <td className="p-1"><span className="font-mono text-slate-400">{l.account.code}</span> {l.account.name}</td>
                                 <td className="p-1 text-slate-500">{l.description ?? '—'}</td>
+                                <td className="p-1 text-slate-500">{l.costCenter ? `${l.costCenter.code} — ${l.costCenter.name}` : '—'}</td>
                                 <td className="p-1 tabular-nums">{Number(l.debit) ? faMoney(l.debit) : '—'}</td>
                                 <td className="p-1 tabular-nums">{Number(l.credit) ? faMoney(l.credit) : '—'}</td>
                               </tr>

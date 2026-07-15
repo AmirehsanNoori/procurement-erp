@@ -45,6 +45,8 @@ import { FinStatements } from './pages/FinStatements';
 import { FinCashPosition } from './pages/FinCashPosition';
 import { FinFiscalYears } from './pages/FinFiscalYears';
 import { FinBudgets } from './pages/FinBudgets';
+import { FinCostCenters } from './pages/FinCostCenters';
+import { FinCostCenterReport } from './pages/FinCostCenterReport';
 
 function Guarded({ permission, children }: { permission: string; children: ReactNode }) {
   return (
@@ -116,6 +118,8 @@ export default function App() {
         <Route path="/finance/cash-position" element={<Guarded permission="finance.view"><FinCashPosition /></Guarded>} />
         <Route path="/finance/fiscal-years" element={<Guarded permission="finance.view"><FinFiscalYears /></Guarded>} />
         <Route path="/finance/budgets" element={<Guarded permission="finance.view"><FinBudgets /></Guarded>} />
+        <Route path="/finance/cost-centers" element={<Guarded permission="finance.view"><FinCostCenters /></Guarded>} />
+        <Route path="/finance/cost-center-report" element={<Guarded permission="finance.view"><FinCostCenterReport /></Guarded>} />
         <Route path="/finance/accounts" element={<Guarded permission="finance.view"><FinAccounts /></Guarded>} />
 
         {/* System */}

@@ -67,6 +67,7 @@ model Tenant {
   finJournals           FinJournal[]
   finJournalLines       FinJournalLine[]
   finBudgets            FinBudget[]
+  finCostCenters        FinCostCenter[]
 
   @@map("tenants")
 }
@@ -327,19 +328,41 @@ model FinJournalLine {
   tenantId    String
   journalId   String
   accountId   String
-  debit       Decimal @default(0) @db.Decimal(18, 2)
-  credit      Decimal @default(0) @db.Decimal(18, 2)
-  description String?
-  sortOrder   Int     @default(0)
+  debit        Decimal @default(0) @db.Decimal(18, 2)
+  credit       Decimal @default(0) @db.Decimal(18, 2)
+  description  String?
+  costCenterId String? // optional analytical dimension (مرکز هزینه)
+  sortOrder    Int     @default(0)
 
-  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  journal FinJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
-  account FinAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journal    FinJournal     @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account    FinAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  costCenter FinCostCenter? @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([journalId])
   @@index([accountId])
+  @@index([costCenterId])
   @@map("fin_journal_lines")
+}
+
+/// Analytical dimension for reporting (مرکز هزینه). Optional on journal lines,
+/// so a single document can split cost across centres (department, project, ...).
+model FinCostCenter {
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines  FinJournalLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("fin_cost_centers")
 }
 
 model BillingInvoice {

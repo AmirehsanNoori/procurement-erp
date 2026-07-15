@@ -125,6 +125,50 @@ router.get('/fiscal-years', requirePermission('finance.view'), asyncHandler(asyn
   res.json({ fiscalYears });
 }));
 
+// ── Cost centres (analytical dimension, F6) ──────────────────────────────────
+const costCenterSchema = z.object({
+  code: z.string().min(1),
+  name: z.string().min(1),
+  isActive: z.boolean().optional(),
+});
+
+router.get('/cost-centers', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const costCenters = await prisma.finCostCenter.findMany({ where: { tenantId: tid(req) }, orderBy: { code: 'asc' } });
+  res.json({ costCenters });
+}));
+
+router.post('/cost-centers', requirePermission('finance.create'), validate(costCenterSchema), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const body = req.body as z.infer<typeof costCenterSchema>;
+  const code = body.code.trim();
+  const dup = await prisma.finCostCenter.findFirst({ where: { tenantId, code } });
+  if (dup) throw ApiError.conflict(`مرکز هزینه با کد «${code}» قبلاً ثبت شده است`);
+  const costCenter = await prisma.finCostCenter.create({ data: { tenantId, code, name: body.name.trim(), isActive: body.isActive ?? true } });
+  res.status(201).json({ costCenter });
+}));
+
+router.patch('/cost-centers/:id', requirePermission('finance.edit'), validate(costCenterSchema.partial()), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const existing = await prisma.finCostCenter.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!existing) throw ApiError.notFound('مرکز هزینه یافت نشد');
+  const body = req.body as Partial<z.infer<typeof costCenterSchema>>;
+  const costCenter = await prisma.finCostCenter.update({
+    where: { id: existing.id },
+    data: { ...(body.name !== undefined ? { name: body.name.trim() } : {}), ...(body.isActive !== undefined ? { isActive: body.isActive } : {}) },
+  });
+  res.json({ costCenter });
+}));
+
+router.delete('/cost-centers/:id', requirePermission('finance.delete'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const existing = await prisma.finCostCenter.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!existing) throw ApiError.notFound('مرکز هزینه یافت نشد');
+  const used = await prisma.finJournalLine.count({ where: { tenantId, costCenterId: existing.id } });
+  if (used > 0) throw ApiError.badRequest('این مرکز هزینه در اسناد استفاده شده و قابل حذف نیست؛ می‌توانید آن را غیرفعال کنید');
+  await prisma.finCostCenter.delete({ where: { id: existing.id } });
+  res.json({ ok: true });
+}));
+
 router.post('/fiscal-years', requirePermission('finance.create'), validate(fiscalSchema), asyncHandler(async (req, res) => {
   const body = req.body as z.infer<typeof fiscalSchema>;
   if (body.endDate <= body.startDate) throw ApiError.badRequest('تاریخ پایان باید بعد از تاریخ شروع باشد');
@@ -157,6 +201,7 @@ const lineSchema = z.object({
   debit: z.coerce.number().min(0).optional(),
   credit: z.coerce.number().min(0).optional(),
   description: z.string().optional().nullable(),
+  costCenterId: z.string().optional().nullable(),
 });
 const journalSchema = z.object({
   date: z.coerce.date(),
@@ -174,7 +219,7 @@ async function validateLines(tenantId: string, lines: z.infer<typeof lineSchema>
     const credit = round2(l.credit ?? 0);
     if (debit > 0 && credit > 0) throw ApiError.badRequest(`سطر ${i + 1}: هر سطر فقط بدهکار یا بستانکار می‌تواند باشد`);
     if (debit === 0 && credit === 0) throw ApiError.badRequest(`سطر ${i + 1}: مبلغ بدهکار یا بستانکار الزامی است`);
-    return { accountId: l.accountId, debit, credit, description: l.description ?? null, sortOrder: i };
+    return { accountId: l.accountId, debit, credit, description: l.description ?? null, costCenterId: l.costCenterId ?? null, sortOrder: i };
   });
   const totalDebit = round2(clean.reduce((s, l) => s + l.debit, 0));
   const totalCredit = round2(clean.reduce((s, l) => s + l.credit, 0));
@@ -189,6 +234,12 @@ async function validateLines(tenantId: string, lines: z.infer<typeof lineSchema>
     if (!acc.isActive) throw ApiError.badRequest(`حساب «${acc.name}» غیرفعال است`);
     if (!acc.isPostable) throw ApiError.badRequest(`حساب «${acc.name}» قابل ثبت سند نیست (فقط حساب‌های معین)`);
   }
+  // Validate optional cost centres belong to the tenant.
+  const ccIds = [...new Set(clean.map((l) => l.costCenterId).filter(Boolean) as string[])];
+  if (ccIds.length) {
+    const found = await prisma.finCostCenter.count({ where: { tenantId, id: { in: ccIds } } });
+    if (found !== ccIds.length) throw ApiError.badRequest('یکی از مراکز هزینهٔ انتخاب‌شده نامعتبر است');
+  }
   return { clean, totalDebit };
 }
 
@@ -197,7 +248,7 @@ async function nextJournalNumber(tenantId: string): Promise<number> {
   return (last?.number ?? 0) + 1;
 }
 
-const journalInclude = { lines: { include: { account: { select: { code: true, name: true } } }, orderBy: { sortOrder: 'asc' as const } } };
+const journalInclude = { lines: { include: { account: { select: { code: true, name: true } }, costCenter: { select: { code: true, name: true } } }, orderBy: { sortOrder: 'asc' as const } } };
 
 router.get('/journals', requirePermission('finance.view'), asyncHandler(async (req, res) => {
   const status = req.query.status as string | undefined;
@@ -274,7 +325,7 @@ router.post('/journals', requirePermission('finance.create'), validate(journalSc
     data: {
       tenantId, number, date: body.date, description: body.description ?? null,
       fiscalYearId: body.fiscalYearId ?? null, status: 'draft', createdById: req.auth!.userId,
-      lines: { create: clean.map((l) => ({ tenantId, accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description, sortOrder: l.sortOrder })) },
+      lines: { create: clean.map((l) => ({ tenantId, accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description, costCenterId: l.costCenterId, sortOrder: l.sortOrder })) },
     },
     include: journalInclude,
   });
@@ -291,7 +342,7 @@ router.patch('/journals/:id', requirePermission('finance.edit'), validate(journa
     if (body.lines) {
       const { clean } = await validateLines(tenantId, body.lines);
       await tx.finJournalLine.deleteMany({ where: { journalId: existing.id } });
-      await tx.finJournalLine.createMany({ data: clean.map((l) => ({ tenantId, journalId: existing.id, accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description, sortOrder: l.sortOrder })) });
+      await tx.finJournalLine.createMany({ data: clean.map((l) => ({ tenantId, journalId: existing.id, accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description, costCenterId: l.costCenterId, sortOrder: l.sortOrder })) });
     }
     return tx.finJournal.update({
       where: { id: existing.id },
@@ -669,6 +720,41 @@ router.get('/budget-vs-actual', requirePermission('finance.view'), asyncHandler(
   });
   const totals = rows.reduce((t, r) => ({ budget: round2(t.budget + r.budget), actual: round2(t.actual + r.actual), variance: round2(t.variance + r.variance) }), { budget: 0, actual: 0, variance: 0 });
   res.json({ fiscalYear: fy, rows, totals });
+}));
+
+/** Cost-centre report: income/expense grouped by cost centre over a period,
+ *  from posted journal lines (unassigned lines bucket under «بدون مرکز هزینه»). */
+router.get('/cost-center-report', requirePermission('finance.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const from = req.query.from ? new Date(req.query.from as string) : null;
+  const to = req.query.to ? new Date(req.query.to as string) : null;
+  const grouped = await prisma.finJournalLine.groupBy({
+    by: ['costCenterId', 'accountId'],
+    where: { tenantId, journal: { status: 'posted', ...(from || to ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}) } },
+    _sum: { debit: true, credit: true },
+  });
+  const [accounts, centers] = await Promise.all([
+    prisma.finAccount.findMany({ where: { tenantId, type: { in: ['income', 'expense'] } }, select: { id: true, type: true } }),
+    prisma.finCostCenter.findMany({ where: { tenantId }, select: { id: true, code: true, name: true } }),
+  ]);
+  const accType = new Map(accounts.map((a) => [a.id, a.type]));
+  const centerInfo = new Map(centers.map((c) => [c.id, c]));
+  type Row = { costCenterId: string; code: string; name: string; income: number; expense: number; net: number };
+  const byCenter = new Map<string, Row>();
+  for (const g of grouped) {
+    const type = accType.get(g.accountId);
+    if (!type) continue; // only income/expense flow through cost-centre P&L
+    const key = g.costCenterId ?? '—';
+    const info = g.costCenterId ? centerInfo.get(g.costCenterId) : undefined;
+    const r = byCenter.get(key) ?? { costCenterId: key, code: info?.code ?? '—', name: info?.name ?? 'بدون مرکز هزینه', income: 0, expense: 0, net: 0 };
+    const debit = Number(g._sum.debit ?? 0), credit = Number(g._sum.credit ?? 0);
+    if (type === 'income') r.income += credit - debit;
+    else r.expense += debit - credit;
+    byCenter.set(key, r);
+  }
+  const rows = [...byCenter.values()].map((r) => ({ ...r, income: round2(r.income), expense: round2(r.expense), net: round2(r.income - r.expense) })).sort((a, b) => b.expense - a.expense);
+  const totals = rows.reduce((t, r) => ({ income: round2(t.income + r.income), expense: round2(t.expense + r.expense), net: round2(t.net + r.net) }), { income: 0, expense: 0, net: 0 });
+  res.json({ rows, totals });
 }));
 
 export default router;
