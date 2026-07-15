@@ -119,6 +119,21 @@ router.get('/stock', requirePermission('warehouse.view'), asyncHandler(async (re
   res.json({ levels });
 }));
 
+/** Reorder report: products whose total on-hand is below their minimum stock. */
+router.get('/low-stock', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const [products, levels] = await Promise.all([
+    prisma.product.findMany({ where: { tenantId, isActive: true, minStock: { not: null } }, select: { id: true, code: true, name: true, unit: true, minStock: true } }),
+    prisma.stockLevel.groupBy({ by: ['productId'], where: { tenantId }, _sum: { quantity: true } }),
+  ]);
+  const onHand = new Map(levels.map((l) => [l.productId, Number(l._sum.quantity ?? 0)]));
+  const rows = products
+    .map((p) => { const oh = onHand.get(p.id) ?? 0; const min = Number(p.minStock); return { productId: p.id, code: p.code, name: p.name, unit: p.unit, onHand: oh, minStock: min, shortfall: round2(Math.max(0, min - oh)) }; })
+    .filter((r) => r.onHand < r.minStock)
+    .sort((a, b) => b.shortfall - a.shortfall);
+  res.json({ rows });
+}));
+
 /** Inventory valuation: quantity, average cost and value per product (all
  *  warehouses combined) plus the grand total on-hand value. */
 router.get('/valuation', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
