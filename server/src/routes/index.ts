@@ -33,47 +33,10 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
-import { prisma } from '../lib/prisma';
-import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-
-// TEMPORARY: contracts module tables on the build-unreachable Supabase DB.
-// Super-admin only; idempotent. Remove after use.
-router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
-  const stmts = [
-    `CREATE TABLE IF NOT EXISTS "contracts" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "contractNumber" TEXT NOT NULL, "title" TEXT NOT NULL,
-      "type" TEXT NOT NULL DEFAULT 'purchase', "partyName" TEXT, "supplierId" TEXT,
-      "status" TEXT NOT NULL DEFAULT 'draft', "value" DECIMAL(18,2) NOT NULL DEFAULT 0, "currency" TEXT NOT NULL DEFAULT 'ریال',
-      "startDate" TIMESTAMP(3), "endDate" TIMESTAMP(3), "autoRenew" BOOLEAN NOT NULL DEFAULT false, "renewalNoticeDays" INTEGER,
-      "description" TEXT, "notes" TEXT, "createdById" TEXT, "approvedById" TEXT, "approvedAt" TIMESTAMP(3),
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS "contracts_tenantId_contractNumber_key" ON "contracts" ("tenantId", "contractNumber");`,
-    `CREATE INDEX IF NOT EXISTS "contracts_tenantId_idx" ON "contracts" ("tenantId");`,
-    `CREATE TABLE IF NOT EXISTS "contract_amendments" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "contractId" TEXT NOT NULL, "amendmentNumber" TEXT NOT NULL,
-      "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "description" TEXT, "valueChange" DECIMAL(18,2), "newEndDate" TIMESTAMP(3),
-      "createdById" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE INDEX IF NOT EXISTS "contract_amendments_contractId_idx" ON "contract_amendments" ("contractId");`,
-    `DO $$ BEGIN ALTER TABLE "contract_amendments" ADD CONSTRAINT "contract_amendments_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "contracts"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-    `CREATE TABLE IF NOT EXISTS "contract_guarantees" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "contractId" TEXT NOT NULL, "type" TEXT NOT NULL DEFAULT 'performance',
-      "guaranteeNumber" TEXT, "amount" DECIMAL(18,2) NOT NULL DEFAULT 0, "currency" TEXT NOT NULL DEFAULT 'ریال', "bankName" TEXT,
-      "issueDate" TIMESTAMP(3), "expiryDate" TIMESTAMP(3), "status" TEXT NOT NULL DEFAULT 'active', "notes" TEXT,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE INDEX IF NOT EXISTS "contract_guarantees_contractId_idx" ON "contract_guarantees" ("contractId");`,
-    `DO $$ BEGIN ALTER TABLE "contract_guarantees" ADD CONSTRAINT "contract_guarantees_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "contracts"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-  ];
-  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
-  res.json({ ok: true, applied: 'contracts + amendments + guarantees' });
-}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
