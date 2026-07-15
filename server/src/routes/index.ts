@@ -32,50 +32,10 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
-import { prisma } from '../lib/prisma';
-import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-
-// TEMPORARY: purchase-order + supplier-evaluation tables (P1/P2) + invoices.poId
-// on the build-unreachable Supabase DB. Super-admin only; idempotent.
-router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
-  const stmts = [
-    `CREATE TABLE IF NOT EXISTS "purchase_orders" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "poNumber" TEXT NOT NULL,
-      "supplierId" TEXT, "requestId" TEXT, "quotationId" TEXT,
-      "status" TEXT NOT NULL DEFAULT 'draft', "orderDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "expectedDate" TIMESTAMP(3), "currency" TEXT NOT NULL DEFAULT 'ریال',
-      "netAmount" DECIMAL(18,2) NOT NULL DEFAULT 0, "taxAmount" DECIMAL(18,2) NOT NULL DEFAULT 0,
-      "totalAmount" DECIMAL(18,2) NOT NULL DEFAULT 0, "notes" TEXT,
-      "createdById" TEXT, "approvedById" TEXT, "approvedAt" TIMESTAMP(3),
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS "purchase_orders_tenantId_poNumber_key" ON "purchase_orders" ("tenantId", "poNumber");`,
-    `CREATE INDEX IF NOT EXISTS "purchase_orders_tenantId_idx" ON "purchase_orders" ("tenantId");`,
-    `CREATE TABLE IF NOT EXISTS "purchase_order_items" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "poId" TEXT NOT NULL, "productId" TEXT,
-      "description" TEXT NOT NULL, "quantity" DECIMAL(18,3) NOT NULL, "unit" TEXT,
-      "unitPrice" DECIMAL(18,2) NOT NULL DEFAULT 0, "taxAmount" DECIMAL(18,2) NOT NULL DEFAULT 0,
-      "lineTotal" DECIMAL(18,2) NOT NULL DEFAULT 0, "sortOrder" INTEGER NOT NULL DEFAULT 0
-    );`,
-    `CREATE INDEX IF NOT EXISTS "purchase_order_items_poId_idx" ON "purchase_order_items" ("poId");`,
-    `DO $$ BEGIN ALTER TABLE "purchase_order_items" ADD CONSTRAINT "purchase_order_items_poId_fkey" FOREIGN KEY ("poId") REFERENCES "purchase_orders"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-    `ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "poId" TEXT;`,
-    `CREATE TABLE IF NOT EXISTS "supplier_evaluations" (
-      "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL, "supplierId" TEXT NOT NULL, "period" TEXT,
-      "qualityScore" INTEGER NOT NULL, "deliveryScore" INTEGER NOT NULL, "priceScore" INTEGER NOT NULL,
-      "overallScore" DECIMAL(4,2) NOT NULL, "note" TEXT, "evaluatedById" TEXT,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );`,
-    `CREATE INDEX IF NOT EXISTS "supplier_evaluations_tenantId_supplierId_idx" ON "supplier_evaluations" ("tenantId", "supplierId");`,
-  ];
-  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
-  res.json({ ok: true, applied: 'purchase_orders + items + invoices.poId + supplier_evaluations' });
-}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
