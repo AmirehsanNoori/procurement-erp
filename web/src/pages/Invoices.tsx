@@ -20,7 +20,7 @@ interface Invoice {
   supplier: { name: string } | null; budget: { name: string | null } | null; request: { requestNumber: string } | null;
 }
 interface InvoiceDetail extends Invoice {
-  supplierId: string | null; budgetId: string | null; requestId: string | null;
+  supplierId: string | null; budgetId: string | null; requestId: string | null; poId: string | null;
   netAmount: string; vatAmount: string;
   invoiceDate: string | null; followUpDate: string | null;
   sentToAccounting: boolean; accountingReference: string | null;
@@ -65,7 +65,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editReqLabel, setEditReqLabel] = useState('');
   const [err, setErr] = useState('');
-  const [form, setForm] = useState({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' });
+  const [form, setForm] = useState({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', poId: '', dueDate: '', netAmount: '', vatAmount: '0' });
   const [pay, setPay] = useState<{ inv: Invoice; amount: string; date: string; listNumber: string } | null>(null);
   const [payErr, setPayErr] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -105,13 +105,14 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
 
   const suppliersQ = useQuery({ queryKey: ['suppliers-opt', tid], queryFn: async () => (await api.get(`/${tid}/suppliers`)).data.suppliers as { id: string; name: string }[], enabled: Boolean(tid) });
   const budgetsQ = useQuery({ queryKey: ['budgets-opt', tid], queryFn: async () => (await api.get(`/${tid}/budgets`)).data.budgets as { id: string; name: string | null; monthJalali: number; yearJalali: number }[], enabled: Boolean(tid) });
+  const posQ = useQuery({ queryKey: ['pos-opt', tid], queryFn: async () => { try { return (await api.get(`/${tid}/purchase-orders`)).data.orders as { id: string; poNumber: string; supplier: { name: string } | null }[]; } catch { return []; } }, enabled: Boolean(tid), retry: false });
 
   const saveMut = useMutation({
     mutationFn: async () => {
       const payload = {
         invoiceNumber: form.invoiceNumber, supplierId: form.supplierId || null,
         // budgetId can be cleared to null when editing (assign / unassign a budget)
-        budgetId: form.budgetId || null, requestId: form.requestId || null,
+        budgetId: form.budgetId || null, requestId: form.requestId || null, poId: form.poId || null,
         dueDate: form.dueDate || undefined, netAmount: Number(form.netAmount || 0), vatAmount: Number(form.vatAmount || 0),
       };
       return editId ? api.patch(`/${tid}/invoices/${editId}`, payload) : api.post(`/${tid}/invoices`, payload);
@@ -121,7 +122,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
       qc.invalidateQueries({ queryKey: ['budgets', tid] });
       if (editId) qc.invalidateQueries({ queryKey: ['invoice-detail', tid, editId] });
       setOpen(false); setEditId(null);
-      setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' });
+      setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', poId: '', dueDate: '', netAmount: '', vatAmount: '0' });
     },
     onError: (e) => setErr(apiError(e)),
   });
@@ -135,6 +136,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
       supplierId: d.supplierId ?? '',
       budgetId: d.budgetId ?? '',
       requestId: d.requestId ?? '',
+      poId: d.poId ?? '',
       dueDate: d.dueDate ? d.dueDate.slice(0, 10) : '',
       netAmount: String(Number(d.netAmount) || 0),
       vatAmount: String(Number(d.vatAmount) || 0),
@@ -346,7 +348,7 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
         <div className="flex gap-2">
           <ExcelButton store="invoices" />
           <button className="btn btn-outline text-xs" onClick={exportCsv} title={t('invoices.exportCsv')}>{t('invoices.exportCsv')}</button>
-          {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setEditId(null); setEditReqLabel(''); setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', dueDate: '', netAmount: '', vatAmount: '0' }); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
+          {!paidOnly && can('invoices.create') && <button className="btn btn-primary" onClick={() => { setErr(''); setEditId(null); setEditReqLabel(''); setForm({ invoiceNumber: '', supplierId: '', budgetId: '', requestId: '', poId: '', dueDate: '', netAmount: '', vatAmount: '0' }); setOpen((v) => !v); }}>{t('invoices.addNew')}</button>}
         </div>
       </div>
 
@@ -387,6 +389,14 @@ export function Invoices({ paidOnly = false }: { paidOnly?: boolean }) {
               onChange={(v) => setForm({ ...form, budgetId: v })}
               placeholder="—"
               options={[{ value: '', label: '—' }, ...(budgetsQ.data ?? []).map((b) => ({ value: b.id, label: b.name || `${JMONTHS[b.monthJalali]} ${b.yearJalali}` }))]}
+            />
+          </label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">سفارش خرید</span>
+            <SearchableSelect
+              value={form.poId}
+              onChange={(v) => setForm({ ...form, poId: v })}
+              placeholder="—"
+              options={[{ value: '', label: '—' }, ...(posQ.data ?? []).map((p) => ({ value: p.id, label: `${p.poNumber}${p.supplier?.name ? ` — ${p.supplier.name}` : ''}` }))]}
             />
           </label>
           <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{t('invoices.form.dueDate')}</span><JDatePicker className="input" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} /></label>

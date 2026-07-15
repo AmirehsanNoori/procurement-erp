@@ -34,6 +34,7 @@ export const NAV: NavGroup[] = [
       { key: 'requests', path: '/requests', label: 'درخواست‌های فعال', icon: '📋', permission: 'requests.view' },
       { key: 'requestArchive', path: '/requests/archive', label: 'آرشیو درخواست‌ها', icon: '🗄️', permission: 'request_archive.view' },
       { key: 'quotations', path: '/quotations', label: 'پیش‌فاکتورهای فعال', icon: '📝', permission: 'quotations.view' },
+      { key: 'purchaseOrders', path: '/purchase-orders', label: 'سفارش‌های خرید', icon: '📄', permission: 'purchase_orders.view' },
       { key: 'quotationArchive', path: '/quotations/archive', label: 'آرشیو پیش‌فاکتورها', icon: '🗄️', permission: 'quotation_archive.view' },
       { key: 'gantt', path: '/gantt', label: 'گانت فرآیند خرید', icon: '📅', permission: 'requests.view' },
     ],
@@ -74,6 +75,7 @@ export const NAV: NavGroup[] = [
     items: [
       { key: 'suppliers', path: '/suppliers', label: 'تأمین‌کنندگان', icon: '🏭', permission: 'suppliers.view' },
       { key: 'supplierStatement', path: '/suppliers/statement', label: 'صورت‌حساب تأمین‌کننده', icon: '📊', permission: 'supplier_statement.view' },
+      { key: 'supplierEval', path: '/suppliers/evaluations', label: 'ارزیابی تأمین‌کنندگان', icon: '⭐', permission: 'suppliers.view' },
       { key: 'documents', path: '/documents', label: 'مرکز اسناد', icon: '📁', permission: 'document_center.view' },
       { key: 'dueDates', path: '/due-dates', label: 'پایش سررسید', icon: '⏰', permission: 'due_dates.view' },
       { key: 'reports', path: '/reports', label: 'گزارش‌ها و KPI', icon: '📈', permission: 'reports.view' },

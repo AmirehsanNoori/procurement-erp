@@ -9,6 +9,7 @@ import { Users } from './pages/Users';
 import { Suppliers } from './pages/Suppliers';
 import { Budgets } from './pages/Budgets';
 import { Quotations } from './pages/Quotations';
+import { PurchaseOrders } from './pages/PurchaseOrders';
 import { Invoices } from './pages/Invoices';
 import { Payments } from './pages/Payments';
 import { ControlCenter } from './pages/ControlCenter';
@@ -19,6 +20,7 @@ import { Audit } from './pages/Audit';
 import { ImportExport } from './pages/ImportExport';
 import { DueDates } from './pages/DueDates';
 import { SupplierStatement } from './pages/SupplierStatement';
+import { SupplierEvaluations } from './pages/SupplierEvaluations';
 import { Reports } from './pages/Reports';
 import { Tasks } from './pages/Tasks';
 import { Timeline } from './pages/Timeline';
@@ -76,11 +78,13 @@ export default function App() {
         {/* Suppliers */}
         <Route path="/suppliers" element={<Guarded permission="suppliers.view"><Suppliers /></Guarded>} />
         <Route path="/suppliers/statement" element={<Guarded permission="supplier_statement.view"><SupplierStatement /></Guarded>} />
+        <Route path="/suppliers/evaluations" element={<Guarded permission="suppliers.view"><SupplierEvaluations /></Guarded>} />
 
         {/* Finance */}
         <Route path="/budget" element={<Guarded permission="monthly_budget.view"><Budgets /></Guarded>} />
         <Route path="/quotations" element={<Guarded permission="quotations.view"><Quotations /></Guarded>} />
         <Route path="/quotations/archive" element={<Guarded permission="quotation_archive.view"><Quotations archived /></Guarded>} />
+        <Route path="/purchase-orders" element={<Guarded permission="purchase_orders.view"><PurchaseOrders /></Guarded>} />
         <Route path="/invoices" element={<Guarded permission="invoices.view"><Invoices /></Guarded>} />
         <Route path="/invoices/paid" element={<Guarded permission="paid_invoice_archive.view"><Invoices paidOnly /></Guarded>} />
         <Route path="/payments" element={<Guarded permission="payments.view"><Payments /></Guarded>} />

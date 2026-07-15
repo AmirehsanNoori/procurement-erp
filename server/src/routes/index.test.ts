@@ -10,6 +10,7 @@ describe('tenant module mounting (via Core registry)', () => {
       'suppliers',
       'budgets',
       'quotations',
+      'purchase-orders',
       'invoices',
       'payments',
       'control-center',

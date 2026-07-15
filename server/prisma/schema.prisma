@@ -70,6 +70,8 @@ model Tenant {
   finCostCenters        FinCostCenter[]
   stocktakes            Stocktake[]
   stocktakeItems        StocktakeItem[]
+  purchaseOrders        PurchaseOrder[]
+  supplierEvaluations   SupplierEvaluation[]
 
   @@map("tenants")
 }
@@ -569,9 +571,83 @@ model Supplier {
   contacts      SupplierContact[]
   interactions  SupplierInteraction[]
   blanketOrders BlanketOrder[]
+  purchaseOrders PurchaseOrder[]
+  evaluations   SupplierEvaluation[]
 
   @@index([tenantId])
   @@map("suppliers")
+}
+
+/// Formal purchase order (سفارش خرید) — the P2P commitment between quotation
+/// selection and supplier invoicing. Enables three-way match (PO/GRN/invoice).
+model PurchaseOrder {
+  id           String    @id @default(cuid())
+  tenantId     String
+  poNumber     String
+  supplierId   String?
+  requestId    String? // soft origin (procurement request)
+  quotationId  String? // soft origin (winning quotation)
+  status       String    @default("draft") // draft | approved | sent | received | closed | cancelled
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime?
+  currency     String    @default("ریال")
+  netAmount    Decimal   @default(0) @db.Decimal(18, 2)
+  taxAmount    Decimal   @default(0) @db.Decimal(18, 2)
+  totalAmount  Decimal   @default(0) @db.Decimal(18, 2)
+  notes        String?
+  createdById  String?
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier?           @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@unique([tenantId, poNumber])
+  @@index([tenantId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id          String   @id @default(cuid())
+  tenantId    String
+  poId        String
+  productId   String? // optional catalog link
+  description String
+  quantity    Decimal  @db.Decimal(18, 3)
+  unit        String?
+  unitPrice   Decimal  @default(0) @db.Decimal(18, 2)
+  taxAmount   Decimal  @default(0) @db.Decimal(18, 2)
+  lineTotal   Decimal  @default(0) @db.Decimal(18, 2)
+  sortOrder   Int      @default(0)
+
+  order PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+
+  @@index([poId])
+  @@map("purchase_order_items")
+}
+
+/// Periodic supplier scorecard (ارزیابی تأمین‌کننده) — quality/delivery/price.
+model SupplierEvaluation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  supplierId    String
+  period        String? // e.g. "۱۴۰۵-بهار" or free text
+  qualityScore  Int // 1..5
+  deliveryScore Int // 1..5
+  priceScore    Int // 1..5
+  overallScore  Decimal @db.Decimal(4, 2) // average of the three
+  note          String?
+  evaluatedById String?
+  createdAt     DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+  @@map("supplier_evaluations")
 }
 
 model SupplierContact {
@@ -802,6 +878,7 @@ model Invoice {
   invoiceNumber           String
   requestId               String?
   quotationId             String?
+  poId                    String? // soft link to purchase order (three-way match)
   supplierId              String?
   invoiceDate             DateTime?
   dueDate                 DateTime?

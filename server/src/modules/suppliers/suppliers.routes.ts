@@ -346,4 +346,57 @@ router.delete('/:id/blanket-orders/:orderId', requirePermission('suppliers.edit'
   })
 );
 
+// ── Supplier evaluation / scorecard (P2) ─────────────────────────────────────
+const score = z.coerce.number().int().min(1).max(5);
+const evalSchema = z.object({
+  period: z.string().optional().nullable(),
+  qualityScore: score,
+  deliveryScore: score,
+  priceScore: score,
+  note: z.string().optional().nullable(),
+});
+
+/** Scorecard: every supplier with its average scores and evaluation count. */
+router.get('/evaluations/summary', requirePermission('suppliers.view'), asyncHandler(async (req, res) => {
+  const tenantId = req.tenant!.tenantId;
+  const [suppliers, grouped] = await Promise.all([
+    prisma.supplier.findMany({ where: { tenantId }, select: { id: true, name: true } }),
+    prisma.supplierEvaluation.groupBy({ by: ['supplierId'], where: { tenantId }, _avg: { qualityScore: true, deliveryScore: true, priceScore: true, overallScore: true }, _count: true }),
+  ]);
+  const byId = new Map(grouped.map((g) => [g.supplierId, g]));
+  const r2 = (n: unknown) => (n == null ? 0 : Math.round(Number(n) * 100) / 100);
+  const rows = suppliers.map((s) => {
+    const g = byId.get(s.id);
+    return { supplierId: s.id, name: s.name, count: g?._count ?? 0,
+      quality: r2(g?._avg.qualityScore), delivery: r2(g?._avg.deliveryScore), price: r2(g?._avg.priceScore), overall: r2(g?._avg.overallScore) };
+  }).sort((a, b) => b.overall - a.overall);
+  res.json({ rows });
+}));
+
+router.get('/:id/evaluations', requirePermission('suppliers.view'), asyncHandler(async (req, res) => {
+  const tenantId = req.tenant!.tenantId;
+  const evaluations = await prisma.supplierEvaluation.findMany({ where: { tenantId, supplierId: req.params.id }, orderBy: { createdAt: 'desc' } });
+  res.json({ evaluations });
+}));
+
+router.post('/:id/evaluations', requirePermission('suppliers.edit'), validate(evalSchema), asyncHandler(async (req, res) => {
+  const tenantId = req.tenant!.tenantId;
+  const supplier = await prisma.supplier.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!supplier) throw ApiError.notFound('تأمین‌کننده یافت نشد');
+  const b = req.body as z.infer<typeof evalSchema>;
+  const overall = Math.round(((b.qualityScore + b.deliveryScore + b.priceScore) / 3) * 100) / 100;
+  const evaluation = await prisma.supplierEvaluation.create({
+    data: { tenantId, supplierId: supplier.id, period: b.period ?? null, qualityScore: b.qualityScore, deliveryScore: b.deliveryScore, priceScore: b.priceScore, overallScore: overall, note: b.note ?? null, evaluatedById: req.auth!.userId },
+  });
+  res.status(201).json({ evaluation });
+}));
+
+router.delete('/:id/evaluations/:evalId', requirePermission('suppliers.edit'), asyncHandler(async (req, res) => {
+  const tenantId = req.tenant!.tenantId;
+  const existing = await prisma.supplierEvaluation.findFirst({ where: { tenantId, id: req.params.evalId, supplierId: req.params.id } });
+  if (!existing) throw ApiError.notFound('ارزیابی یافت نشد');
+  await prisma.supplierEvaluation.delete({ where: { id: existing.id } });
+  res.json({ ok: true });
+}));
+
 export default router;
