@@ -81,6 +81,9 @@ model Tenant {
   hrAttendance          HrAttendance[]
   tickets               Ticket[]
   ticketComments        TicketComment[]
+  officeLetters         OfficeLetter[]
+  officeMeetings        OfficeMeeting[]
+  officeMeetingActions  OfficeMeetingAction[]
 
   @@map("tenants")
 }
@@ -555,6 +558,72 @@ model TicketComment {
 
   @@index([ticketId])
   @@map("ticket_comments")
+}
+
+// ── Office automation module (اتوماسیون اداری) ───────────────────────────────
+
+/// Secretariat / correspondence registry (دبیرخانه — نامه‌های وارده/صادره).
+model OfficeLetter {
+  id              String   @id @default(cuid())
+  tenantId        String
+  letterNumber    String
+  direction       String   @default("incoming") // incoming | outgoing | internal
+  subject         String
+  correspondent   String? // sender (incoming) or recipient (outgoing)
+  letterDate      DateTime?
+  priority        String   @default("normal") // normal | important | urgent
+  status          String   @default("registered") // draft | registered | sent | archived
+  referenceNumber String? // پیرو / عطف
+  body            String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, letterNumber])
+  @@index([tenantId])
+  @@map("office_letters")
+}
+
+/// Meeting with agenda, minutes and action items (جلسات).
+model OfficeMeeting {
+  id          String    @id @default(cuid())
+  tenantId    String
+  title       String
+  date        DateTime?
+  location    String?
+  organizer   String?
+  attendees   String? // free text list
+  agenda      String?
+  minutes     String?
+  status      String    @default("scheduled") // scheduled | held | cancelled
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant  Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actions OfficeMeetingAction[]
+
+  @@index([tenantId])
+  @@map("office_meetings")
+}
+
+model OfficeMeetingAction {
+  id          String    @id @default(cuid())
+  tenantId    String
+  meetingId   String
+  description String
+  assignee    String?
+  dueDate     DateTime?
+  done        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meeting OfficeMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@map("office_meeting_actions")
 }
 
 model BillingInvoice {

@@ -44,7 +44,7 @@ const MODULES: HubModule[] = [
   { key: 'finance', title: 'مالی و حسابداری', icon: '💰', desc: 'کدینگ حساب‌ها، سند حسابداری دوطرفه، دفتر کل و تراز آزمایشی', accent: 'from-rose-500 to-pink-600', entries: [['finance.view', '/finance']] },
   { key: 'hr', title: 'منابع انسانی', icon: '👥', desc: 'پرسنل، حضور و غیاب، مرخصی و امور اداری کارکنان', accent: 'from-violet-500 to-purple-600', entries: [['hr.view', '/hr']] },
   { key: 'ticketing', title: 'تیکتینگ / IT', icon: '🎫', desc: 'پشتیبانی، درخواست‌های فنی و پیگیری', accent: 'from-cyan-500 to-sky-600', entries: [['ticketing.view', '/ticketing']] },
-  { key: 'office', title: 'اتوماسیون اداری', icon: '✉️', desc: 'نامه‌نگاری، دبیرخانه، جلسات و آموزش', accent: 'from-slate-500 to-slate-700', soon: true },
+  { key: 'office', title: 'اتوماسیون اداری', icon: '✉️', desc: 'نامه‌نگاری، دبیرخانه و جلسات', accent: 'from-slate-500 to-slate-700', entries: [['office.view', '/office']] },
   { key: 'ai', title: 'دستیار هوشمند', icon: '🤖', desc: 'جستجوی سازمانی، گزارش هوشمند و پیشنهادها', accent: 'from-fuchsia-500 to-indigo-600', soon: true },
 ];
 

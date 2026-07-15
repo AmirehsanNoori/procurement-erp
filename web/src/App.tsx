@@ -38,6 +38,9 @@ import { HrLeaves } from './pages/HrLeaves';
 import { HrAttendance } from './pages/HrAttendance';
 import { Tickets } from './pages/Tickets';
 import { TicketsDashboard } from './pages/TicketsDashboard';
+import { OfficeDashboard } from './pages/OfficeDashboard';
+import { OfficeLetters } from './pages/OfficeLetters';
+import { OfficeMeetings } from './pages/OfficeMeetings';
 import { GanttView } from './pages/GanttView';
 import { Expenses } from './pages/Expenses';
 import { Subscription } from './pages/Subscription';
@@ -157,6 +160,11 @@ export default function App() {
         {/* Ticketing */}
         <Route path="/ticketing" element={<Guarded permission="ticketing.view"><TicketsDashboard /></Guarded>} />
         <Route path="/ticketing/list" element={<Guarded permission="ticketing.view"><Tickets /></Guarded>} />
+
+        {/* Office automation */}
+        <Route path="/office" element={<Guarded permission="office.view"><OfficeDashboard /></Guarded>} />
+        <Route path="/office/letters" element={<Guarded permission="office.view"><OfficeLetters /></Guarded>} />
+        <Route path="/office/meetings" element={<Guarded permission="office.view"><OfficeMeetings /></Guarded>} />
 
         {/* System */}
         <Route path="/import-export" element={<Guarded permission="import_export.view"><ImportExport /></Guarded>} />

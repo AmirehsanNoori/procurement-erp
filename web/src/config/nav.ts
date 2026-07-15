@@ -152,6 +152,16 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    key: 'officeGroup',
+    title: 'اتوماسیون اداری',
+    module: 'office',
+    items: [
+      { key: 'officeDash', path: '/office', label: 'داشبورد', icon: '🏠', permission: 'office.view' },
+      { key: 'officeLetters', path: '/office/letters', label: 'دبیرخانه', icon: '✉️', permission: 'office.view' },
+      { key: 'officeMeetings', path: '/office/meetings', label: 'جلسات', icon: '📅', permission: 'office.view' },
+    ],
+  },
+  {
     key: 'management',
     title: 'مدیریت',
     module: 'system',
