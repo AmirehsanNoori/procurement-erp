@@ -108,13 +108,35 @@ router.get('/stock', requirePermission('warehouse.view'), asyncHandler(async (re
     ...(req.query.productId ? { productId: req.query.productId as string } : {}),
     ...(req.query.warehouseId ? { warehouseId: req.query.warehouseId as string } : {}),
   };
-  const levels = await prisma.stockLevel.findMany({
+  const rows = await prisma.stockLevel.findMany({
     where,
     include: { product: { select: { code: true, name: true, unit: true, minStock: true } }, warehouse: { select: { code: true, name: true } } },
     orderBy: { updatedAt: 'desc' },
     take: 1000,
   });
+  const levels = rows.map((l) => ({ ...l, value: round2(Number(l.quantity) * Number(l.avgCost)) }));
   res.json({ levels });
+}));
+
+/** Inventory valuation: quantity, average cost and value per product (all
+ *  warehouses combined) plus the grand total on-hand value. */
+router.get('/valuation', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const levels = await prisma.stockLevel.findMany({
+    where: { tenantId, ...(req.query.warehouseId ? { warehouseId: req.query.warehouseId as string } : {}) },
+    include: { product: { select: { code: true, name: true, unit: true } } },
+  });
+  const byProduct = new Map<string, { code: string; name: string; unit: string | null; quantity: number; value: number }>();
+  for (const l of levels) {
+    const q = Number(l.quantity), v = round2(q * Number(l.avgCost));
+    const r = byProduct.get(l.productId) ?? { code: l.product.code, name: l.product.name, unit: l.product.unit, quantity: 0, value: 0 };
+    r.quantity = round2(r.quantity + q); r.value = round2(r.value + v);
+    byProduct.set(l.productId, r);
+  }
+  const rows = [...byProduct.entries()].map(([productId, r]) => ({ productId, ...r, avgCost: r.quantity > 0 ? round2(r.value / r.quantity) : 0 }))
+    .filter((r) => r.quantity !== 0 || r.value !== 0)
+    .sort((a, b) => b.value - a.value);
+  res.json({ rows, totalValue: round2(rows.reduce((s, r) => s + r.value, 0)) });
 }));
 
 router.get('/movements', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
@@ -132,17 +154,37 @@ router.get('/movements', requirePermission('warehouse.view'), asyncHandler(async
   res.json({ movements });
 }));
 
-/** Apply a signed quantity delta to a product/warehouse stock level. */
-async function applyDelta(tx: Prisma.TransactionClient, tenantId: string, productId: string, warehouseId: string, delta: number) {
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Apply a stock movement with moving-average valuation and return the unit cost
+ * and value to record on the movement.
+ * - inflow: unitCost = provided cost (else current average); recompute average.
+ * - outflow: unitCost = current average (COGS); average unchanged.
+ */
+async function applyValuedMovement(
+  tx: Prisma.TransactionClient, tenantId: string, productId: string, warehouseId: string,
+  flow: 'in' | 'out', qty: number, providedUnitCost?: number | null,
+): Promise<{ unitCost: number; value: number; newQty: number }> {
   const level = await tx.stockLevel.findUnique({ where: { productId_warehouseId: { productId, warehouseId } } });
-  const current = level ? Number(level.quantity) : 0;
-  const next = current + delta;
+  const curQty = level ? Number(level.quantity) : 0;
+  const curAvg = level ? Number(level.avgCost) : 0;
+  let unitCost: number, newQty: number, newAvg: number;
+  if (flow === 'in') {
+    unitCost = round2(providedUnitCost != null ? providedUnitCost : curAvg);
+    newQty = round2(curQty + qty);
+    newAvg = newQty > 0 ? round2((curQty * curAvg + qty * unitCost) / newQty) : unitCost;
+  } else {
+    unitCost = round2(curAvg); // moving-average cost out
+    newQty = round2(curQty - qty);
+    newAvg = curAvg;
+  }
   await tx.stockLevel.upsert({
     where: { productId_warehouseId: { productId, warehouseId } },
-    create: { tenantId, productId, warehouseId, quantity: next },
-    update: { quantity: next },
+    create: { tenantId, productId, warehouseId, quantity: newQty, avgCost: newAvg },
+    update: { quantity: newQty, avgCost: newAvg },
   });
-  return next;
+  return { unitCost, value: round2(qty * unitCost), newQty };
 }
 
 const movementSchema = z.object({
@@ -150,6 +192,7 @@ const movementSchema = z.object({
   warehouseId: z.string().min(1),
   type: z.enum(['receipt', 'issue', 'adjustment']),
   quantity: z.coerce.number(),
+  unitCost: z.coerce.number().min(0).optional().nullable(), // for inflows (receipt / positive adjustment)
   note: z.string().optional().nullable(),
   refModule: z.string().optional().nullable(),
   refType: z.string().optional().nullable(),
@@ -170,23 +213,23 @@ router.post('/movements', validate(movementSchema), asyncHandler(async (req, res
   if (!product || !warehouse) throw ApiError.badRequest('کالا یا انبار نامعتبر است');
 
   const qty = Math.abs(b.quantity);
-  const delta = b.type === 'receipt' ? qty : b.type === 'issue' ? -qty : b.quantity; // adjustment keeps sign
-  if (b.type === 'issue') {
+  // receipt = inflow; issue = outflow; adjustment inflow/outflow by sign.
+  const flow: 'in' | 'out' = b.type === 'receipt' ? 'in' : b.type === 'issue' ? 'out' : (b.quantity >= 0 ? 'in' : 'out');
+  if (flow === 'out') {
     const level = await prisma.stockLevel.findUnique({ where: { productId_warehouseId: { productId: b.productId, warehouseId: b.warehouseId } } });
     if ((level ? Number(level.quantity) : 0) < qty) throw ApiError.badRequest('موجودی کافی نیست');
   }
 
   const movement = await prisma.$transaction(async (tx) => {
-    const m = await tx.stockMovement.create({
+    const val = await applyValuedMovement(tx, tenantId, b.productId, b.warehouseId, flow, qty, flow === 'in' ? b.unitCost : undefined);
+    return tx.stockMovement.create({
       data: {
         tenantId, productId: b.productId, warehouseId: b.warehouseId,
-        type: b.type, quantity: Math.abs(b.quantity),
+        type: b.type, quantity: qty, unitCost: val.unitCost, value: val.value,
         refModule: b.refModule ?? null, refType: b.refType ?? null, refId: b.refId ?? null,
         note: b.note ?? null, createdById: req.auth!.userId,
       },
     });
-    await applyDelta(tx, tenantId, b.productId, b.warehouseId, delta);
-    return m;
   });
   res.status(201).json({ movement });
 }));
@@ -207,10 +250,11 @@ router.post('/movements/transfer', requirePermission('warehouse.transfer'), vali
   if ((level ? Number(level.quantity) : 0) < b.quantity) throw ApiError.badRequest('موجودی انبار مبدأ کافی نیست');
 
   await prisma.$transaction(async (tx) => {
-    await tx.stockMovement.create({ data: { tenantId, productId: b.productId, warehouseId: b.fromWarehouseId, type: 'transfer_out', quantity: b.quantity, note: b.note ?? null, createdById: req.auth!.userId } });
-    await tx.stockMovement.create({ data: { tenantId, productId: b.productId, warehouseId: b.toWarehouseId, type: 'transfer_in', quantity: b.quantity, note: b.note ?? null, createdById: req.auth!.userId } });
-    await applyDelta(tx, tenantId, b.productId, b.fromWarehouseId, -b.quantity);
-    await applyDelta(tx, tenantId, b.productId, b.toWarehouseId, b.quantity);
+    // Ship out at the source's moving-average cost, receive in at that same cost.
+    const out = await applyValuedMovement(tx, tenantId, b.productId, b.fromWarehouseId, 'out', b.quantity);
+    await tx.stockMovement.create({ data: { tenantId, productId: b.productId, warehouseId: b.fromWarehouseId, type: 'transfer_out', quantity: b.quantity, unitCost: out.unitCost, value: out.value, note: b.note ?? null, createdById: req.auth!.userId } });
+    const inn = await applyValuedMovement(tx, tenantId, b.productId, b.toWarehouseId, 'in', b.quantity, out.unitCost);
+    await tx.stockMovement.create({ data: { tenantId, productId: b.productId, warehouseId: b.toWarehouseId, type: 'transfer_in', quantity: b.quantity, unitCost: inn.unitCost, value: inn.value, note: b.note ?? null, createdById: req.auth!.userId } });
   });
   res.status(201).json({ ok: true });
 }));
@@ -224,7 +268,7 @@ router.get('/pending-receipts', requirePermission('warehouse.receive'), asyncHan
       supplier: { select: { name: true } },
       // Include the originating request's line items so the warehouse receives
       // against what was actually requested (Part 1).
-      request: { select: { id: true, requestNumber: true, items: { select: { productId: true, category: true, description: true, quantity: true, unit: true }, orderBy: { sortOrder: 'asc' } } } },
+      request: { select: { id: true, requestNumber: true, items: { select: { productId: true, category: true, description: true, quantity: true, unit: true, unitPrice: true }, orderBy: { sortOrder: 'asc' } } } },
     },
     orderBy: { sentToWarehouseAt: 'asc' },
   });
@@ -252,7 +296,7 @@ router.get('/receipts', requirePermission('warehouse.view'), asyncHandler(async 
 const receiveSchema = z.object({
   invoiceId: z.string().min(1),
   warehouseId: z.string().min(1),
-  lines: z.array(z.object({ productId: z.string().min(1), quantity: z.coerce.number().positive(), note: z.string().optional().nullable() })).min(1),
+  lines: z.array(z.object({ productId: z.string().min(1), quantity: z.coerce.number().positive(), unitCost: z.coerce.number().min(0).optional().nullable(), note: z.string().optional().nullable() })).min(1),
 });
 // Register the receipt: stock-in each line (soft-ref to the invoice) and mark the
 // invoice received so procurement can forward it to finance.
@@ -278,16 +322,16 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
       },
     });
     for (const line of b.lines) {
-      await tx.goodsReceiptItem.create({ data: { tenantId, receiptId: receipt.id, productId: line.productId, quantity: line.quantity, note: line.note ?? null } });
+      const val = await applyValuedMovement(tx, tenantId, line.productId, b.warehouseId, 'in', line.quantity, line.unitCost);
+      await tx.goodsReceiptItem.create({ data: { tenantId, receiptId: receipt.id, productId: line.productId, quantity: line.quantity, unitCost: val.unitCost, note: line.note ?? null } });
       await tx.stockMovement.create({
         data: {
           tenantId, productId: line.productId, warehouseId: b.warehouseId,
-          type: 'receipt', quantity: line.quantity,
+          type: 'receipt', quantity: line.quantity, unitCost: val.unitCost, value: val.value,
           refModule: 'procurement', refType: 'invoice', refId: invoice.id,
           note: line.note ?? null, createdById: req.auth!.userId,
         },
       });
-      await applyDelta(tx, tenantId, line.productId, b.warehouseId, line.quantity);
     }
     await tx.invoice.update({ where: { id: invoice.id }, data: { receivedAt: new Date() } });
   });

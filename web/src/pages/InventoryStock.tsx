@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { api, apiError } from '../lib/api';
-import { faDate } from '../lib/format';
+import { faDate, faMoney } from '../lib/format';
 import { SearchableSelect } from '../components/SearchableSelect';
 
-interface Level { id: string; quantity: string; product: { code: string; name: string; unit: string | null; minStock: string | null }; warehouse: { code: string; name: string }; productId: string; warehouseId: string; }
-interface Movement { id: string; type: string; quantity: string; date: string | null; note: string | null; product: { code: string; name: string; unit: string | null }; warehouse: { name: string }; }
+interface Level { id: string; quantity: string; avgCost: string; value: number; product: { code: string; name: string; unit: string | null; minStock: string | null }; warehouse: { code: string; name: string }; productId: string; warehouseId: string; }
+interface Movement { id: string; type: string; quantity: string; unitCost: string | null; value: string | null; date: string | null; note: string | null; product: { code: string; name: string; unit: string | null }; warehouse: { name: string }; }
 
 const TYPE_FA: Record<string, string> = { receipt: 'رسید', issue: 'حواله', adjustment: 'اصلاح', transfer_in: 'انتقال (ورود)', transfer_out: 'انتقال (خروج)' };
 const TYPE_COLOR: Record<string, string> = { receipt: 'text-emerald-600', issue: 'text-rose-600', adjustment: 'text-amber-600', transfer_in: 'text-blue-600', transfer_out: 'text-blue-600' };
@@ -16,7 +16,7 @@ export function InventoryStock() {
   const { currentTenantId, can } = useAuth();
   const tid = currentTenantId!;
   const qc = useQueryClient();
-  const [mv, setMv] = useState({ productId: '', warehouseId: '', type: 'receipt', quantity: '', note: '' });
+  const [mv, setMv] = useState({ productId: '', warehouseId: '', type: 'receipt', quantity: '', unitCost: '', note: '' });
   const [err, setErr] = useState('');
 
   const levelsQ = useQuery({ queryKey: ['inv-stock', tid], queryFn: async () => (await api.get(`/${tid}/inventory/stock`)).data.levels as Level[], enabled: !!tid });
@@ -25,11 +25,11 @@ export function InventoryStock() {
   const whQ = useQuery({ queryKey: ['inv-warehouses-opt', tid], queryFn: async () => (await api.get(`/${tid}/inventory/warehouses`)).data.warehouses as { id: string; code: string; name: string }[], enabled: !!tid });
 
   const record = useMutation({
-    mutationFn: async () => api.post(`/${tid}/inventory/movements`, { ...mv, quantity: Number(mv.quantity || 0) }),
+    mutationFn: async () => api.post(`/${tid}/inventory/movements`, { ...mv, quantity: Number(mv.quantity || 0), unitCost: mv.unitCost !== '' ? Number(mv.unitCost) : undefined }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inv-stock', tid] });
       qc.invalidateQueries({ queryKey: ['inv-moves', tid] });
-      setMv({ productId: '', warehouseId: '', type: 'receipt', quantity: '', note: '' });
+      setMv({ productId: '', warehouseId: '', type: 'receipt', quantity: '', unitCost: '', note: '' });
       setErr('');
     },
     onError: (e) => setErr(apiError(e)),
@@ -54,6 +54,7 @@ export function InventoryStock() {
                 <option value="adjustment">اصلاح موجودی</option>
               </select>
               <input className="input" type="number" placeholder="تعداد" value={mv.quantity} onChange={(e) => setMv({ ...mv, quantity: e.target.value })} />
+              {mv.type !== 'issue' && <input className="input" type="number" placeholder="بهای واحد (اختیاری — رسید/اصلاح مثبت)" value={mv.unitCost} onChange={(e) => setMv({ ...mv, unitCost: e.target.value })} />}
               <input className="input" placeholder="یادداشت (اختیاری)" value={mv.note} onChange={(e) => setMv({ ...mv, note: e.target.value })} />
               <button className="btn btn-primary w-full" disabled={record.isPending || !mv.productId || !mv.warehouseId || !mv.quantity} onClick={() => { setErr(''); record.mutate(); }}>ثبت حرکت</button>
             </div>
@@ -65,7 +66,7 @@ export function InventoryStock() {
           <div className="border-b border-slate-100 p-3 text-sm font-bold text-slate-700">موجودی فعلی</div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="bg-slate-50 text-right text-slate-500"><th className="p-3">کالا</th><th className="p-3">انبار</th><th className="p-3">موجودی</th><th className="p-3">واحد</th></tr></thead>
+              <thead><tr className="bg-slate-50 text-right text-slate-500"><th className="p-3">کالا</th><th className="p-3">انبار</th><th className="p-3">موجودی</th><th className="p-3">واحد</th><th className="p-3">بهای میانگین</th><th className="p-3">ارزش</th></tr></thead>
               <tbody>
                 {(levelsQ.data ?? []).map((l) => {
                   const low = l.product.minStock != null && Number(l.quantity) < Number(l.product.minStock);
@@ -75,10 +76,12 @@ export function InventoryStock() {
                       <td className="p-3">{l.warehouse.name}</td>
                       <td className={`p-3 font-bold tabular-nums ${low ? 'text-rose-600' : 'text-slate-800'}`}>{Number(l.quantity)}{low && <span className="mr-1 text-[10px]">کمبود</span>}</td>
                       <td className="p-3">{l.product.unit ?? '—'}</td>
+                      <td className="p-3 tabular-nums text-slate-500">{Number(l.avgCost) ? faMoney(l.avgCost) : '—'}</td>
+                      <td className="p-3 tabular-nums font-semibold">{l.value ? faMoney(l.value) : '—'}</td>
                     </tr>
                   );
                 })}
-                {(levelsQ.data ?? []).length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400">موجودی‌ای ثبت نشده.</td></tr>}
+                {(levelsQ.data ?? []).length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">موجودی‌ای ثبت نشده.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -90,7 +93,7 @@ export function InventoryStock() {
         <div className="border-b border-slate-100 p-3 text-sm font-bold text-slate-700">تاریخچه حرکت‌ها</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 text-right text-slate-500"><th className="p-3">تاریخ</th><th className="p-3">نوع</th><th className="p-3">کالا</th><th className="p-3">انبار</th><th className="p-3">تعداد</th><th className="p-3">یادداشت</th></tr></thead>
+            <thead><tr className="bg-slate-50 text-right text-slate-500"><th className="p-3">تاریخ</th><th className="p-3">نوع</th><th className="p-3">کالا</th><th className="p-3">انبار</th><th className="p-3">تعداد</th><th className="p-3">بهای واحد</th><th className="p-3">ارزش</th><th className="p-3">یادداشت</th></tr></thead>
             <tbody>
               {(movesQ.data ?? []).map((m) => (
                 <tr key={m.id} className="border-t border-slate-100">
@@ -99,10 +102,12 @@ export function InventoryStock() {
                   <td className="p-3">{m.product.name}</td>
                   <td className="p-3">{m.warehouse.name}</td>
                   <td className="p-3 tabular-nums">{Number(m.quantity)} {m.product.unit ?? ''}</td>
+                  <td className="p-3 tabular-nums text-slate-500">{m.unitCost && Number(m.unitCost) ? faMoney(m.unitCost) : '—'}</td>
+                  <td className="p-3 tabular-nums">{m.value && Number(m.value) ? faMoney(m.value) : '—'}</td>
                   <td className="p-3 text-xs text-slate-500">{m.note ?? '—'}</td>
                 </tr>
               ))}
-              {(movesQ.data ?? []).length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">حرکتی ثبت نشده.</td></tr>}
+              {(movesQ.data ?? []).length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">حرکتی ثبت نشده.</td></tr>}
             </tbody>
           </table>
         </div>

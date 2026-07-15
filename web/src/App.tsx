@@ -35,6 +35,7 @@ import { InventoryWarehouses } from './pages/InventoryWarehouses';
 import { InventoryStock } from './pages/InventoryStock';
 import { InventoryReceipts } from './pages/InventoryReceipts';
 import { InventoryReceiptHistory } from './pages/InventoryReceiptHistory';
+import { InventoryValuation } from './pages/InventoryValuation';
 import { FinAccounts } from './pages/FinAccounts';
 import { FinJournals } from './pages/FinJournals';
 import { FinJournalEntry } from './pages/FinJournalEntry';
@@ -102,6 +103,7 @@ export default function App() {
 
         {/* Inventory / Warehouse */}
         <Route path="/inventory/stock" element={<Guarded permission="warehouse.view"><InventoryStock /></Guarded>} />
+        <Route path="/inventory/valuation" element={<Guarded permission="warehouse.view"><InventoryValuation /></Guarded>} />
         <Route path="/inventory/receipts" element={<Guarded permission="warehouse.receive"><InventoryReceipts /></Guarded>} />
         <Route path="/inventory/receipt-history" element={<Guarded permission="warehouse.view"><InventoryReceiptHistory /></Guarded>} />
         <Route path="/inventory/requests" element={<Guarded permission="warehouse.view"><Requests intakeSource="warehouse" /></Guarded>} />

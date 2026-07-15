@@ -151,6 +151,7 @@ model GoodsReceiptItem {
   receiptId   String
   productId   String
   quantity    Decimal @db.Decimal(18, 3)
+  unitCost    Decimal? @db.Decimal(18, 2) // purchase unit cost (inventory valuation)
   note        String?
 
   receipt GoodsReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
@@ -168,6 +169,8 @@ model StockMovement {
   warehouseId String
   type        String // receipt | issue | transfer_in | transfer_out | adjustment
   quantity    Decimal  @db.Decimal(18, 3) // always positive; sign implied by type
+  unitCost    Decimal? @db.Decimal(18, 2) // valuation: inflow cost, or moving-avg COGS on outflow
+  value       Decimal? @db.Decimal(18, 2) // quantity × unitCost
   date        DateTime @default(now())
   refModule   String? // soft cross-module reference (ADR-0009)
   refType     String?
@@ -193,6 +196,7 @@ model StockLevel {
   productId   String
   warehouseId String
   quantity    Decimal  @default(0) @db.Decimal(18, 3)
+  avgCost     Decimal  @default(0) @db.Decimal(18, 2) // moving-average unit cost
   updatedAt   DateTime @updatedAt
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)

@@ -6,12 +6,12 @@ import { api, apiError } from '../lib/api';
 import { faDate, faMoney } from '../lib/format';
 import { SearchableSelect } from '../components/SearchableSelect';
 
-interface ReqItem { productId: string | null; category: string | null; description: string; quantity: string; unit: string | null; }
+interface ReqItem { productId: string | null; category: string | null; description: string; quantity: string; unit: string | null; unitPrice: string | null; }
 interface PendingInvoice {
   id: string; invoiceNumber: string; totalAmount: string; sentToWarehouseAt: string | null;
   supplier: { name: string } | null; request: { id: string; requestNumber: string; items: ReqItem[] } | null;
 }
-interface Line { productId: string; quantity: string; }
+interface Line { productId: string; quantity: string; unitCost: string; }
 
 export function InventoryReceipts() {
   const { currentTenantId } = useAuth();
@@ -19,7 +19,7 @@ export function InventoryReceipts() {
   const qc = useQueryClient();
   const [active, setActive] = useState<PendingInvoice | null>(null);
   const [warehouseId, setWarehouseId] = useState('');
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: '' }]);
+  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: '', unitCost: '' }]);
   const [err, setErr] = useState('');
 
   const pendingQ = useQuery({
@@ -34,23 +34,23 @@ export function InventoryReceipts() {
     mutationFn: async () => api.post(`/${tid}/inventory/receive`, {
       invoiceId: active!.id,
       warehouseId,
-      lines: lines.filter((l) => l.productId && Number(l.quantity) > 0).map((l) => ({ productId: l.productId, quantity: Number(l.quantity) })),
+      lines: lines.filter((l) => l.productId && Number(l.quantity) > 0).map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitCost: l.unitCost !== '' ? Number(l.unitCost) : undefined })),
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inv-pending', tid] });
       qc.invalidateQueries({ queryKey: ['inv-stock', tid] });
       qc.invalidateQueries({ queryKey: ['inv-moves', tid] });
       qc.invalidateQueries({ queryKey: ['invoices', tid] });
-      setActive(null); setWarehouseId(''); setLines([{ productId: '', quantity: '' }]); setErr('');
+      setActive(null); setWarehouseId(''); setLines([{ productId: '', quantity: '', unitCost: '' }]); setErr('');
     },
     onError: (e) => setErr(apiError(e)),
   });
 
   function open(inv: PendingInvoice) {
     setActive(inv); setWarehouseId(''); setErr('');
-    // Pre-fill receipt lines from the request's catalog-linked items (Part 1).
-    const prefill = (inv.request?.items ?? []).filter((it) => it.productId).map((it) => ({ productId: it.productId as string, quantity: String(Number(it.quantity)) }));
-    setLines(prefill.length ? prefill : [{ productId: '', quantity: '' }]);
+    // Pre-fill receipt lines from the request's catalog-linked items, incl. unit cost (Part 1 + valuation).
+    const prefill = (inv.request?.items ?? []).filter((it) => it.productId).map((it) => ({ productId: it.productId as string, quantity: String(Number(it.quantity)), unitCost: it.unitPrice != null ? String(Number(it.unitPrice)) : '' }));
+    setLines(prefill.length ? prefill : [{ productId: '', quantity: '', unitCost: '' }]);
   }
   const canSubmit = warehouseId && lines.some((l) => l.productId && Number(l.quantity) > 0);
 
@@ -98,16 +98,18 @@ export function InventoryReceipts() {
             <label className="mb-3 block"><span className="mb-1 block text-xs font-bold text-slate-600">انبار مقصد</span>
               <SearchableSelect value={warehouseId} onChange={setWarehouseId} placeholder="انتخاب انبار..." options={(whQ.data ?? []).map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` }))} />
             </label>
-            <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-700">اقلام دریافتی</span><button className="btn btn-outline px-2 py-1 text-xs" onClick={() => setLines([...lines, { productId: '', quantity: '' }])}>＋ قلم</button></div>
+            <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-700">اقلام دریافتی</span><button className="btn btn-outline px-2 py-1 text-xs" onClick={() => setLines([...lines, { productId: '', quantity: '', unitCost: '' }])}>＋ قلم</button></div>
             <div className="space-y-2">
               {lines.map((l, i) => (
                 <div key={i} className="flex gap-2">
                   <div className="flex-1"><SearchableSelect value={l.productId} onChange={(v) => setLines(lines.map((x, j) => j === i ? { ...x, productId: v } : x))} placeholder="کالا..." options={(productsQ.data ?? []).map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))} /></div>
-                  <input className="input w-24" type="number" placeholder="تعداد" value={l.quantity} onChange={(e) => setLines(lines.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))} />
+                  <input className="input w-20" type="number" placeholder="تعداد" value={l.quantity} onChange={(e) => setLines(lines.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))} />
+                  <input className="input w-28" type="number" placeholder="بهای واحد" value={l.unitCost} onChange={(e) => setLines(lines.map((x, j) => j === i ? { ...x, unitCost: e.target.value } : x))} />
                   <button className="text-rose-500 hover:text-rose-700" onClick={() => setLines(lines.filter((_, j) => j !== i))}>✕</button>
                 </div>
               ))}
             </div>
+            <p className="mt-1 text-[11px] text-slate-400">بهای واحد از قیمت درخواست پیش‌پر شده؛ برای ارزش‌گذاری موجودی (میانگین موزون) استفاده می‌شود.</p>
             <div className="mt-4 flex justify-end gap-2">
               <button className="btn btn-outline" onClick={() => setActive(null)}>انصراف</button>
               <button className="btn btn-primary" disabled={!canSubmit || receive.isPending} onClick={() => { setErr(''); receive.mutate(); }}>ثبت رسید و افزایش موجودی</button>

@@ -31,10 +31,26 @@ import { requireTenant } from '../middleware/requireTenant';
 import { DefaultApiModuleRegistry } from '@lumentra/core-runtime';
 import type { ApiModule, ApiModuleRegistration } from '@lumentra/core-contracts';
 import { coreServices } from '../core/container';
+import { prisma } from '../lib/prisma';
+import { asyncHandler } from '../lib/http';
 
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
+// TEMPORARY: inventory valuation columns (W1) on the build-unreachable Supabase
+// DB via app runtime. Super-admin only; idempotent. Remove after use.
+router.post('/admin/db-init', requireAuth, asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) return res.status(403).json({ error: 'forbidden' });
+  const stmts = [
+    `ALTER TABLE "stock_levels" ADD COLUMN IF NOT EXISTS "avgCost" DECIMAL(18,2) NOT NULL DEFAULT 0;`,
+    `ALTER TABLE "stock_movements" ADD COLUMN IF NOT EXISTS "unitCost" DECIMAL(18,2);`,
+    `ALTER TABLE "stock_movements" ADD COLUMN IF NOT EXISTS "value" DECIMAL(18,2);`,
+    `ALTER TABLE "goods_receipt_items" ADD COLUMN IF NOT EXISTS "unitCost" DECIMAL(18,2);`,
+  ];
+  for (const sql of stmts) await prisma.$executeRawUnsafe(sql);
+  res.json({ ok: true, applied: 'inventory valuation columns' });
+}));
 
 // Account-level routes (no tenant gate).
 router.use('/auth', authRoutes);
