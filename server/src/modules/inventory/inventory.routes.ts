@@ -6,7 +6,7 @@ import { ApiError, asyncHandler } from '../../lib/http';
 import { validate } from '../../middleware/validate';
 import { requirePermission } from '../../middleware/requirePermission';
 import { searchTerms } from '../../lib/search';
-import { createReceiptJournal, createIssueJournal } from '../finance/inventory-posting';
+import { createReceiptJournal, createIssueJournal, createStocktakeJournal } from '../finance/inventory-posting';
 
 // Mounted at /api/:tenantId/inventory behind requireAuth + requireTenant.
 const router = Router({ mergeParams: true });
@@ -366,6 +366,90 @@ router.post('/receive', requirePermission('warehouse.receive'), validate(receive
     data: { tenantId, type: 'invoice', level: 'important', title: `رسید فاکتور ${invoice.invoiceNumber} در انبار ثبت شد`, entityType: 'invoice', entityId: invoice.id },
   }).catch(() => undefined);
   res.json({ ok: true, posting });
+}));
+
+// ── Stocktake / physical count (W4) ──────────────────────────────────────────
+router.get('/stocktakes', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
+  const stocktakes = await prisma.stocktake.findMany({
+    where: { tenantId: tid(req) },
+    include: { warehouse: { select: { code: true, name: true } }, _count: { select: { items: true } } },
+    orderBy: { number: 'desc' }, take: 200,
+  });
+  res.json({ stocktakes });
+}));
+
+router.get('/stocktakes/:id', requirePermission('warehouse.view'), asyncHandler(async (req, res) => {
+  const stocktake = await prisma.stocktake.findFirst({
+    where: { tenantId: tid(req), id: req.params.id },
+    include: { warehouse: { select: { code: true, name: true } }, items: { include: { product: { select: { code: true, name: true, unit: true } } }, orderBy: { product: { code: 'asc' } } } },
+  });
+  if (!stocktake) throw ApiError.notFound('انبارگردانی یافت نشد');
+  res.json({ stocktake });
+}));
+
+/** Open a stocktake for a warehouse, snapshotting current system quantities. */
+router.post('/stocktakes', requirePermission('warehouse.adjust'), validate(z.object({ warehouseId: z.string().min(1), note: z.string().optional().nullable() })), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const b = req.body as { warehouseId: string; note?: string };
+  const warehouse = await prisma.warehouse.findFirst({ where: { id: b.warehouseId, tenantId } });
+  if (!warehouse) throw ApiError.badRequest('انبار نامعتبر است');
+  const levels = await prisma.stockLevel.findMany({ where: { tenantId, warehouseId: b.warehouseId } });
+  if (levels.length === 0) throw ApiError.badRequest('این انبار موجودی ثبت‌شده‌ای ندارد');
+  const last = await prisma.stocktake.findFirst({ where: { tenantId }, orderBy: { number: 'desc' }, select: { number: true } });
+  const stocktake = await prisma.stocktake.create({
+    data: {
+      tenantId, warehouseId: b.warehouseId, number: (last?.number ?? 0) + 1, note: b.note ?? null, createdById: req.auth!.userId,
+      items: { create: levels.map((l) => ({ tenantId, productId: l.productId, systemQty: l.quantity, unitCost: l.avgCost })) },
+    },
+    include: { items: true },
+  });
+  res.status(201).json({ stocktake });
+}));
+
+/** Save counted quantities on a draft stocktake. */
+router.patch('/stocktakes/:id/counts', requirePermission('warehouse.adjust'), validate(z.object({ counts: z.array(z.object({ itemId: z.string(), countedQty: z.coerce.number().min(0) })) })), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const st = await prisma.stocktake.findFirst({ where: { tenantId, id: req.params.id } });
+  if (!st) throw ApiError.notFound('انبارگردانی یافت نشد');
+  if (st.status !== 'draft') throw ApiError.badRequest('این انبارگردانی نهایی شده است');
+  const { counts } = req.body as { counts: { itemId: string; countedQty: number }[] };
+  await prisma.$transaction(counts.map((c) => prisma.stocktakeItem.updateMany({ where: { id: c.itemId, stocktakeId: st.id, tenantId }, data: { countedQty: c.countedQty } })));
+  res.json({ ok: true });
+}));
+
+/** Complete: reconcile each variance with an adjustment movement + post the net
+ *  variance to the GL (fail-open). */
+router.post('/stocktakes/:id/complete', requirePermission('warehouse.adjust'), asyncHandler(async (req, res) => {
+  const tenantId = tid(req);
+  const st = await prisma.stocktake.findFirst({ where: { tenantId, id: req.params.id }, include: { items: true, warehouse: { select: { name: true } } } });
+  if (!st) throw ApiError.notFound('انبارگردانی یافت نشد');
+  if (st.status !== 'draft') throw ApiError.badRequest('این انبارگردانی قبلاً نهایی شده است');
+  const counted = st.items.filter((i) => i.countedQty !== null);
+  if (counted.length === 0) throw ApiError.badRequest('هیچ شمارشی ثبت نشده است');
+
+  let netDelta = 0;
+  await prisma.$transaction(async (tx) => {
+    for (const it of counted) {
+      const variance = round2(Number(it.countedQty) - Number(it.systemQty));
+      if (variance === 0) continue;
+      const flow = variance > 0 ? 'in' : 'out';
+      const val = await applyValuedMovement(tx, tenantId, it.productId, st.warehouseId, flow, Math.abs(variance), flow === 'in' ? Number(it.unitCost) : undefined);
+      netDelta += variance > 0 ? val.value : -val.value;
+      await tx.stockMovement.create({
+        data: {
+          tenantId, productId: it.productId, warehouseId: st.warehouseId,
+          type: 'adjustment', quantity: Math.abs(variance), unitCost: val.unitCost, value: val.value,
+          refModule: 'inventory', refType: 'stocktake', refId: st.id,
+          note: `انبارگردانی #${st.number}`, createdById: req.auth!.userId,
+        },
+      });
+    }
+    await tx.stocktake.update({ where: { id: st.id }, data: { status: 'completed', completedAt: new Date() } });
+  });
+  const posting = round2(netDelta) !== 0
+    ? await createStocktakeJournal(tenantId, st.id, round2(netDelta), `انبار ${st.warehouse.name}`, req.auth!.userId).catch(() => undefined)
+    : { status: 'skipped' as const, reason: 'مغایرتی وجود نداشت' };
+  res.json({ ok: true, netDelta: round2(netDelta), posting });
 }));
 
 export default router;

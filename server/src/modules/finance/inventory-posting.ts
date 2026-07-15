@@ -16,6 +16,7 @@ export const INVENTORY_GL = {
   inventoryCode: '100301', // موجودی کالا
   grirCode: '200103', // حساب واسط دریافت/فاکتور کالا
   cogsCode: '500101', // بهای تمام‌شده کالای فروش‌رفته
+  varianceCode: '500401', // کسری و اضافات انبارگردانی
 };
 
 export interface PostingResult {
@@ -67,4 +68,14 @@ export function createReceiptJournal(tenantId: string, receiptId: string, value:
 /** Stock issue: Dr COGS, Cr inventory. */
 export function createIssueJournal(tenantId: string, movementId: string, value: number, label: string, createdById?: string | null) {
   return postPair(tenantId, 'stock_issue', movementId, `حواله انبار${label ? ` — ${label}` : ''}`, INVENTORY_GL.cogsCode, INVENTORY_GL.inventoryCode, value, createdById);
+}
+
+/** Stocktake variance: surplus → Dr inventory / Cr variance; shortage → reverse.
+ *  `netDelta` is the signed inventory value change (surplus positive). */
+export function createStocktakeJournal(tenantId: string, stocktakeId: string, netDelta: number, label: string, createdById?: string | null) {
+  const amount = Math.abs(round2(netDelta));
+  const [debit, credit] = netDelta >= 0
+    ? [INVENTORY_GL.inventoryCode, INVENTORY_GL.varianceCode] // surplus
+    : [INVENTORY_GL.varianceCode, INVENTORY_GL.inventoryCode]; // shortage
+  return postPair(tenantId, 'stocktake', stocktakeId, `مغایرت انبارگردانی${label ? ` — ${label}` : ''}`, debit, credit, amount, createdById);
 }

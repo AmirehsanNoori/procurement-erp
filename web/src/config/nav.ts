@@ -94,6 +94,7 @@ export const NAV: NavGroup[] = [
       { key: 'invLowStock', path: '/inventory/low-stock', label: 'نقطهٔ سفارش', icon: '⚠️', permission: 'warehouse.view' },
       { key: 'invReceipts', path: '/inventory/receipts', label: 'رسیدهای در انتظار', icon: '📥', permission: 'warehouse.receive' },
       { key: 'invReceiptHistory', path: '/inventory/receipt-history', label: 'تاریخچه رسیدها', icon: '🧾', permission: 'warehouse.view' },
+      { key: 'invStocktake', path: '/inventory/stocktake', label: 'انبارگردانی', icon: '📋', permission: 'warehouse.view' },
       { key: 'invProducts', path: '/inventory/products', label: 'کالاها', icon: '🏷️', permission: 'warehouse.view' },
       { key: 'invWarehouses', path: '/inventory/warehouses', label: 'انبارها', icon: '🏬', permission: 'warehouse.view' },
     ],

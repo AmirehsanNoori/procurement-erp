@@ -68,6 +68,8 @@ model Tenant {
   finJournalLines       FinJournalLine[]
   finBudgets            FinBudget[]
   finCostCenters        FinCostCenter[]
+  stocktakes            Stocktake[]
+  stocktakeItems        StocktakeItem[]
 
   @@map("tenants")
 }
@@ -94,6 +96,7 @@ model Product {
   movements    StockMovement[]
   levels       StockLevel[]
   receiptItems GoodsReceiptItem[]
+  stocktakeItems StocktakeItem[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -115,6 +118,7 @@ model Warehouse {
   movements StockMovement[]
   levels    StockLevel[]
   receipts  GoodsReceipt[]
+  stocktakes Stocktake[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -159,6 +163,48 @@ model GoodsReceiptItem {
 
   @@index([receiptId])
   @@map("goods_receipt_items")
+}
+
+/// Physical inventory count (انبارگردانی): snapshot system qty, enter counted
+/// qty, then reconcile variances via adjustment movements on completion.
+model Stocktake {
+  id          String    @id @default(cuid())
+  tenantId    String
+  warehouseId String
+  number      Int
+  status      String    @default("draft") // draft | completed
+  date        DateTime  @default(now())
+  note        String?
+  createdById String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  items     StocktakeItem[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@map("stocktakes")
+}
+
+model StocktakeItem {
+  id          String   @id @default(cuid())
+  tenantId    String
+  stocktakeId String
+  productId   String
+  systemQty   Decimal  @db.Decimal(18, 3) // on-hand snapshot at creation
+  countedQty  Decimal? @db.Decimal(18, 3) // physical count
+  unitCost    Decimal  @default(0) @db.Decimal(18, 2) // avg cost snapshot for variance value
+  note        String?
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stocktake Stocktake @relation(fields: [stocktakeId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([stocktakeId])
+  @@map("stocktake_items")
 }
 
 /// Source of truth for stock: every receipt/issue/transfer/adjustment.

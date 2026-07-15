@@ -75,6 +75,8 @@ export const IRANIAN_COA: CoaSeedNode[] = [
   { code: '5003', name: 'هزینه‌های خرید و تدارکات', type: 'expense', parentCode: '50', isPostable: false },
   { code: '500301', name: 'هزینه خرید', type: 'expense', parentCode: '5003', isPostable: true },
   { code: '500302', name: 'هزینه حمل و نقل', type: 'expense', parentCode: '5003', isPostable: true },
+  { code: '5004', name: 'کسری و اضافات انبار', type: 'expense', parentCode: '50', isPostable: false },
+  { code: '500401', name: 'کسری و اضافات انبارگردانی', type: 'expense', parentCode: '5004', isPostable: true },
 ];
 
 export function levelOfCode(code: string): number {
